@@ -245,11 +245,28 @@ struct BufferInit {
 } // anonymous namespace
 
 //=============================================================================
+// UART TX Complete Callback
+//=============================================================================
+
+static void uart_tx_complete_callback(UART_HandleTypeDef* huart)
+{
+	(void)huart;
+	dual_buffer_.tx_complete_isr();
+}
+
+//=============================================================================
 // Public API
 //=============================================================================
 
 namespace stm32zero {
 namespace debug {
+
+void init()
+{
+	HAL_UART_RegisterCallback(&STM32ZERO_DEBUG_UART,
+		HAL_UART_TX_COMPLETE_CB_ID,
+		uart_tx_complete_callback);
+}
 
 void tx_complete_isr()
 {

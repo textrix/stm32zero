@@ -8,6 +8,7 @@
  *   - Lock-free dual buffer for efficient DMA transmission
  *   - ISR and Task safe (uses critical sections)
  *   - printf() automatically redirected via _write() override
+ *   - Auto callback registration (no manual ISR code needed)
  *
  * Configuration (stm32zero-conf.h):
  *   - STM32ZERO_DEBUG_UART: UART handle name (required, e.g., huart3)
@@ -17,13 +18,11 @@
  * Requirements:
  *   - Link stm32zero-debug.cpp to your project
  *   - UART with DMA TX configured in STM32CubeMX
+ *   - USE_HAL_UART_REGISTER_CALLBACKS=1 in stm32h7xx_hal_conf.h
  *
  * Usage:
- *   // In HAL_UART_TxCpltCallback (stm32h7xx_it.c):
- *   #include "stm32zero-debug.hpp"
- *   void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart) {
- *       stm32zero::debug::tx_complete_isr();
- *   }
+ *   // In main.c after MX_USARTx_UART_Init():
+ *   stm32zero::debug::init();
  *
  *   // Then just use printf():
  *   printf("Hello, World!\r\n");
@@ -36,9 +35,20 @@ namespace stm32zero {
 namespace debug {
 
 /**
+ * Initialize debug module
+ *
+ * Registers UART TX complete callback automatically.
+ * Call after MX_USARTx_UART_Init().
+ *
+ * Requires USE_HAL_UART_REGISTER_CALLBACKS=1 in stm32h7xx_hal_conf.h
+ */
+void init();
+
+/**
  * DMA transfer complete callback
  *
- * Must be called from HAL_UART_TxCpltCallback().
+ * Called automatically if init() was used.
+ * Can also be called manually from HAL_UART_TxCpltCallback().
  */
 void tx_complete_isr();
 
