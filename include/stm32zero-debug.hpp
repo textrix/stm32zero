@@ -20,6 +20,10 @@
  *   - UART with DMA TX configured in STM32CubeMX
  *   - USE_HAL_UART_REGISTER_CALLBACKS=1 in stm32h7xx_hal_conf.h
  *
+ * STM32CubeMX DMA Settings:
+ *   - HAL: Enable both DMA and DMA interrupt (NVIC)
+ *   - LL:  Enable DMA only (interrupt not required)
+ *
  * Usage:
  *   // In main.c after MX_USARTx_UART_Init():
  *   stm32zero::debug::init();
