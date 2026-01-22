@@ -6,8 +6,8 @@
  *
  * Features:
  *   - Lock-free dual buffer for efficient DMA transmission
- *   - ISR and Task safe (uses critical sections)
- *   - printf() automatically redirected via _write() override
+ *   - ISR and Task safe (auto-detects context via IPSR register)
+ *   - printf() works from both Task and ISR context
  *   - Auto callback registration (no manual ISR code needed)
  *
  * Configuration (stm32zero-conf.h):
@@ -59,7 +59,8 @@ void tx_complete_isr();
 /**
  * Write data to debug buffer
  *
- * Thread-safe: can be called from ISR or Task context.
+ * ISR-safe: auto-detects context and uses appropriate critical section.
+ * Can be called from both Task and ISR context.
  * If buffer is full, data is truncated.
  *
  * @param data Pointer to data
@@ -72,6 +73,7 @@ int write(const void* data, size_t len);
  * Flush pending data
  *
  * Starts DMA transfer if there's data and not already busy.
+ * ISR-safe: can be called from both Task and ISR context.
  *
  * @return true if new transfer started
  */

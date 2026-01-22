@@ -94,7 +94,7 @@ public:
 
 	void tx_complete_isr()
 	{
-		enter_critical_from_isr();
+		enter_critical();
 
 		tx_busy_ = false;
 
@@ -102,7 +102,7 @@ public:
 			start_dma_locked();
 		}
 
-		exit_critical_from_isr();
+		exit_critical();
 	}
 
 	bool flush()
@@ -173,8 +173,13 @@ private:
 
 	void enter_critical()
 	{
+		in_isr_context_ = is_in_isr();
 #if defined(configUSE_PREEMPTION) && (configUSE_PREEMPTION == 1)
-		taskENTER_CRITICAL();
+		if (in_isr_context_) {
+			saved_interrupt_status_ = taskENTER_CRITICAL_FROM_ISR();
+		} else {
+			taskENTER_CRITICAL();
+		}
 #else
 		primask_ = __get_PRIMASK();
 		__disable_irq();
@@ -184,26 +189,11 @@ private:
 	void exit_critical()
 	{
 #if defined(configUSE_PREEMPTION) && (configUSE_PREEMPTION == 1)
-		taskEXIT_CRITICAL();
-#else
-		__set_PRIMASK(primask_);
-#endif
-	}
-
-	void enter_critical_from_isr()
-	{
-#if defined(configUSE_PREEMPTION) && (configUSE_PREEMPTION == 1)
-		saved_interrupt_status_ = taskENTER_CRITICAL_FROM_ISR();
-#else
-		primask_ = __get_PRIMASK();
-		__disable_irq();
-#endif
-	}
-
-	void exit_critical_from_isr()
-	{
-#if defined(configUSE_PREEMPTION) && (configUSE_PREEMPTION == 1)
-		taskEXIT_CRITICAL_FROM_ISR(saved_interrupt_status_);
+		if (in_isr_context_) {
+			taskEXIT_CRITICAL_FROM_ISR(saved_interrupt_status_);
+		} else {
+			taskEXIT_CRITICAL();
+		}
 #else
 		__set_PRIMASK(primask_);
 #endif
@@ -215,6 +205,7 @@ private:
 	volatile bool tx_busy_ = false;
 	volatile uint16_t fill_pos_water_mark_[2] = {0, 0};
 
+	bool in_isr_context_ = false;
 #if defined(configUSE_PREEMPTION) && (configUSE_PREEMPTION == 1)
 	UBaseType_t saved_interrupt_status_ = 0;
 #else

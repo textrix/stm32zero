@@ -256,6 +256,28 @@ public:
 	static constexpr size_t aligned_size() { return aligned_size_; }
 };
 
+//=============================================================================
+// ISR detection (Cortex-M)
+//=============================================================================
+
+/**
+ * Check if currently executing in ISR context
+ *
+ * Uses Cortex-M IPSR register:
+ *   - IPSR == 0: Thread mode (normal code)
+ *   - IPSR != 0: Handler mode (ISR)
+ *
+ * @return true if in ISR, false otherwise
+ */
+static inline bool is_in_isr()
+{
+#if defined(__CORTEX_M)
+	return (__get_IPSR() != 0);
+#else
+	return false;
+#endif
+}
+
 } // namespace stm32zero
 
 #endif // STM32ZERO_HPP
