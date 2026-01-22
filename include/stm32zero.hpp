@@ -190,6 +190,10 @@ constexpr T cache_align(T value) noexcept
 #define STM32ZERO_DTCM        STM32ZERO_SECTION(".dtcmram")
 #endif
 
+#ifndef STM32ZERO_DTCM_DATA
+#define STM32ZERO_DTCM_DATA   STM32ZERO_SECTION(".dtcmram_data")
+#endif
+
 #ifndef STM32ZERO_DMA
 #define STM32ZERO_DMA         STM32ZERO_SECTION(".dma")
 #endif
