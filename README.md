@@ -17,7 +17,7 @@ Zero-Overhead C++ Utility Library for STM32
 
 ## Requirements
 
-- C++14 or later
+- C++17 or later
 - STM32 HAL Drivers
 
 ## License
