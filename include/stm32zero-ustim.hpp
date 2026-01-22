@@ -30,6 +30,7 @@
 
 #include "main.h"
 #include <cstdint>
+#include <cassert>
 
 //=============================================================================
 // Configuration
@@ -53,6 +54,10 @@
 
 namespace stm32zero {
 namespace ustim {
+
+#ifndef NDEBUG
+extern bool initialized_;
+#endif
 
 /**
  * Initialize microsecond timer
@@ -80,6 +85,8 @@ void init();
  */
 __STATIC_FORCEINLINE uint64_t get()
 {
+	assert(initialized_ && "ustim::init() must be called before get()");
+
 	uint16_t h, m1, m2, l1, l2;
 
 	do {
