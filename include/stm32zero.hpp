@@ -12,6 +12,15 @@
 #include "stm32zero-conf.h"
 #endif
 
+//=============================================================================
+// FreeRTOS (optional)
+//=============================================================================
+
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+#include "FreeRTOS.h"
+#include "task.h"
+#endif
+
 namespace stm32zero {
 
 //=============================================================================
@@ -277,6 +286,119 @@ static inline bool is_in_isr()
 	return false;
 #endif
 }
+
+//=============================================================================
+// Critical Section (RAII)
+//=============================================================================
+
+/**
+ * RAII guard for critical section
+ *
+ * Automatically detects ISR/Task context and uses appropriate API:
+ *   - FreeRTOS: taskENTER_CRITICAL / taskENTER_CRITICAL_FROM_ISR
+ *   - Bare-metal: PRIMASK-based interrupt disable/enable
+ *
+ * Usage:
+ *   void some_function() {
+ *       CriticalSection cs;  // auto enter
+ *       // ... critical section code ...
+ *   }  // auto exit
+ *
+ *   void ISR_Handler() {
+ *       CriticalSection cs;  // ISR mode auto-detected
+ *       // ... critical section code ...
+ *   }  // state auto-restored
+ */
+class CriticalSection {
+public:
+	CriticalSection()
+	{
+		in_isr_ = is_in_isr();
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+		if (in_isr_) {
+			saved_state_ = taskENTER_CRITICAL_FROM_ISR();
+		} else {
+			taskENTER_CRITICAL();
+		}
+#else
+		saved_state_ = __get_PRIMASK();
+		__disable_irq();
+#endif
+	}
+
+	~CriticalSection()
+	{
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+		if (in_isr_) {
+			taskEXIT_CRITICAL_FROM_ISR(saved_state_);
+		} else {
+			taskEXIT_CRITICAL();
+		}
+#else
+		__set_PRIMASK(saved_state_);
+#endif
+	}
+
+	// Non-copyable, non-movable
+	CriticalSection(const CriticalSection&) = delete;
+	CriticalSection& operator=(const CriticalSection&) = delete;
+	CriticalSection(CriticalSection&&) = delete;
+	CriticalSection& operator=(CriticalSection&&) = delete;
+
+private:
+	bool in_isr_;
+	uint32_t saved_state_;
+};
+
+//=============================================================================
+// Blocking Wait (non-RTOS only)
+//=============================================================================
+
+#if !defined(STM32ZERO_RTOS_FREERTOS) || (STM32ZERO_RTOS_FREERTOS == 0)
+
+/**
+ * Wait until condition is true or timeout (low-power)
+ *
+ * Uses WFI instruction between checks for power efficiency.
+ * Relies on SysTick or other interrupts to wake periodically.
+ *
+ * @tparam Predicate Callable returning bool
+ * @param cond Condition to check (returns true when satisfied)
+ * @param timeout_ms Timeout in milliseconds (0 = non-blocking, returns immediately)
+ * @return true if condition satisfied, false if timeout
+ *
+ * Usage:
+ *     // Wait for flag
+ *     wait_until([]{ return data_ready; }, 1000);
+ *
+ *     // Wait for GPIO
+ *     wait_until([]{ return HAL_GPIO_ReadPin(GPIOA, PIN_0); }, 500);
+ *
+ *     // Non-blocking check
+ *     wait_until([]{ return flag; }, 0);
+ */
+template<typename Predicate>
+bool wait_until(Predicate cond, uint32_t timeout_ms)
+{
+	if (cond()) {
+		return true;
+	}
+
+	if (timeout_ms == 0) {
+		return false;
+	}
+
+	uint32_t start = HAL_GetTick();
+	while (!cond()) {
+		if ((HAL_GetTick() - start) >= timeout_ms) {
+			return false;
+		}
+		__WFI();
+	}
+	return true;
+}
+
+#endif // !STM32ZERO_RTOS_FREERTOS
 
 } // namespace stm32zero
 
