@@ -17,7 +17,7 @@
  *   #include "stm32zero-freertos.hpp"
  *   using namespace stm32zero::freertos;
  *
- *   StaticTask<1024> task;
+ *   StaticTask<256> task;  // 256 words = 1024 bytes on 32-bit
  *   task.create(myFunc, "Task", Priority::NORMAL);
  *
  *   StaticQueue<sizeof(Message), 10> queue;
@@ -97,10 +97,10 @@ using QueueHandle = QueueHandle_t;
 /**
  * Static FreeRTOS task with compile-time stack size
  *
- * @tparam StackBytes Stack size in bytes (must be multiple of sizeof(StackType_t))
+ * @tparam StackWords Stack size in words (same unit as xTaskCreate)
  *
  * Usage:
- *   StaticTask<1024> task;  // 1KB stack
+ *   StaticTask<256> task;  // 256 words = 1024 bytes on 32-bit
  *
  *   void taskFunc(void* param) {
  *       for (;;) { ... }
@@ -112,13 +112,9 @@ using QueueHandle = QueueHandle_t;
  *   // Access FreeRTOS handle for native API
  *   vTaskSuspend(task.handle());
  */
-template<size_t StackBytes>
+template<size_t StackWords>
 class StaticTask {
-	static constexpr size_t StackWords = StackBytes / sizeof(StackType_t);
-
 public:
-	static_assert(StackBytes % sizeof(StackType_t) == 0,
-		"StackBytes must be multiple of sizeof(StackType_t)");
 	static_assert(StackWords >= configMINIMAL_STACK_SIZE,
 		"Stack size must be at least configMINIMAL_STACK_SIZE");
 
@@ -190,8 +186,8 @@ public:
 	/** Explicit conversion to TaskHandle_t */
 	explicit operator TaskHandle_t() const { return handle_; }
 
-	static constexpr size_t stack_bytes() { return StackBytes; }
 	static constexpr size_t stack_words() { return StackWords; }
+	static constexpr size_t stack_bytes() { return StackWords * sizeof(StackType_t); }
 
 private:
 	StaticTask_t tcb_{};
