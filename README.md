@@ -2,23 +2,140 @@
 
 Zero-Overhead C++ Utility Library for STM32
 
-## Design Principles
+[한국어](README.ko.md)
 
-- **Zero-overhead**: Extensive use of templates, constexpr, and inline
-- **No runtime cost**: No virtual functions, RTTI, heap, or dynamic polymorphism
-- **Modern Embedded C++**: C-like C++ style
-- **Static allocation**: All resources statically allocated
+## Features
 
-## Code Style
+- **Zero-overhead**: Extensive use of templates, constexpr, and inline functions
+- **No runtime cost**: No virtual functions, RTTI, heap allocation, or dynamic polymorphism
+- **Modern Embedded C++**: Clean C-like C++ style optimized for embedded systems
+- **Static allocation**: All resources are statically allocated at compile time
 
-- **Indentation**: Tab size 8
-- **Enum names**: UPPERCASE (e.g., `Priority::NORMAL`, `Priority::HIGH`)
-- **Naming**: snake_case (functions, variables), PascalCase (classes, enums)
+## Modules
+
+### Core (`stm32zero.hpp`)
+
+Basic utilities for embedded development:
+
+- `dimof(arr)` - Compile-time array size (type-safe alternative to `sizeof(arr)/sizeof(arr[0])`)
+- `is_power_of_2(x)` - Compile-time power of 2 check
+- `align_up<N>(value)` - Align value to N-byte boundary
+- `cache_align(value)` - Align to cache line boundary (STM32H7: 32 bytes)
+- `is_in_isr()` - Detect ISR context via Cortex-M IPSR register
+- `DmaBuffer<Size>` - Cache-aligned DMA buffer with size validation
+
+**Section Placement Macros:**
+- `STM32ZERO_ITCM` - Place code in ITCM RAM (fast execution)
+- `STM32ZERO_DTCM` - Place data in DTCM RAM (fast access, no cache)
+- `STM32ZERO_DMA` / `STM32ZERO_DMA_TX` / `STM32ZERO_DMA_RX` - DMA-safe memory regions
+
+### Debug (`stm32zero-debug.hpp`)
+
+DMA-based printf output with lock-free dual buffering:
+
+- ISR and Task safe (auto-detects context)
+- No blocking - data queued to buffer
+- Auto callback registration
+
+```cpp
+#include "stm32zero-debug.hpp"
+
+// After MX_USARTx_UART_Init()
+stm32zero::debug::init();
+
+// Works from anywhere (task or ISR)
+printf("Hello, World!\r\n");
+```
+
+### Microsecond Timer (`stm32zero-ustim.hpp`)
+
+48-bit lock-free microsecond counter using 3 cascaded 16-bit timers:
+
+- Lock-free reads (safe from any context)
+- Inline implementation (zero call overhead)
+- Range: ~8.9 years before overflow
+
+```cpp
+#include "stm32zero-ustim.hpp"
+
+stm32zero::ustim::init();
+
+uint64_t start = stm32zero::ustim::get();
+// ... do work ...
+uint64_t elapsed_us = stm32zero::ustim::get() - start;
+```
+
+### FreeRTOS (`stm32zero-freertos.hpp`)
+
+Zero-overhead FreeRTOS wrappers:
+
+**Priority Enum** (CMSIS-RTOS v1/v2 compatible):
+```cpp
+using namespace stm32zero::freertos;
+
+// Works with both native FreeRTOS and CMSIS-RTOS
+task.create(func, "Task", Priority::NORMAL);
+xTaskCreate(func, "Task", 128, NULL, +Priority::HIGH, NULL);
+```
+
+**Static Task** (zero heap allocation):
+```cpp
+StaticTask<256> task;  // 256 words = 1024 bytes on 32-bit
+
+task.create(myFunc, "MyTask", Priority::NORMAL);
+task.create(myFunc, "MyTask", Priority::HIGH, &userData);
+```
+
+**Static Queue**:
+```cpp
+StaticQueue<sizeof(Message), 10> queue;  // 10 messages
+queue.create();
+
+Message msg = {1, 42};
+queue.send(&msg);
+queue.receive(&msg);
+queue.send_from_isr(&msg);  // ISR-safe
+```
 
 ## Requirements
 
 - C++17 or later
 - STM32 HAL Drivers
+- ARM Cortex-M processor
+
+## Installation
+
+Add as a git submodule:
+
+```bash
+git submodule add https://github.com/textrix/stm32zero.git STM32ZERO
+```
+
+Include path: `STM32ZERO/include`
+
+## Configuration
+
+Create `stm32zero-conf.h` in your include path (optional):
+
+```c
+// Debug module UART handle
+#define STM32ZERO_DEBUG_UART        huart3
+#define STM32ZERO_DEBUG_BUFFER_SIZE 4096
+
+// Microsecond timer instances
+#define STM32ZERO_USTIM_L           TIM3
+#define STM32ZERO_USTIM_M           TIM4
+#define STM32ZERO_USTIM_H           TIM12
+
+// Cache line size override (auto-detected if not defined)
+#define STM32ZERO_CACHE_LINE_SIZE   32
+```
+
+## Code Style
+
+- **Indentation**: Tab (8 spaces width)
+- **Naming**: `snake_case` for functions/variables, `PascalCase` for classes/enums
+- **Enum values**: UPPERCASE (`Priority::NORMAL`, `Priority::HIGH`)
 
 ## License
 
