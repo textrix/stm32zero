@@ -23,13 +23,15 @@ Basic utilities for embedded development:
 - `cache_align(value)` - Align to cache line boundary (STM32H7: 32 bytes)
 - `is_in_isr()` - Detect ISR context via Cortex-M IPSR register
 - `DmaBuffer<Size>` - Cache-aligned DMA buffer with size validation
+- `CriticalSection` - RAII guard for interrupt-safe critical sections
+- `wait_until(cond, timeout)` - Low-power blocking wait with WFI (non-RTOS only)
 
 **Section Placement Macros:**
 - `STM32ZERO_ITCM` - Place code in ITCM RAM (fast execution)
 - `STM32ZERO_DTCM` - Place data in DTCM RAM (fast access, no cache)
 - `STM32ZERO_DMA` / `STM32ZERO_DMA_TX` / `STM32ZERO_DMA_RX` - DMA-safe memory regions
 
-### Debug (`stm32zero-debug.hpp`)
+### Stdout (`stm32zero-sout.hpp`)
 
 DMA-based printf output with lock-free dual buffering:
 
@@ -38,13 +40,36 @@ DMA-based printf output with lock-free dual buffering:
 - Auto callback registration
 
 ```cpp
-#include "stm32zero-debug.hpp"
+#include "stm32zero-sout.hpp"
 
 // After MX_USARTx_UART_Init()
-stm32zero::debug::init();
+stm32zero::sout::init();
 
 // Works from anywhere (task or ISR)
 printf("Hello, World!\r\n");
+```
+
+### Stdin (`stm32zero-sin.hpp`)
+
+DMA-based UART RX with idle line detection:
+
+- Ring buffer with atomic `pop_until()` for efficient line reading
+- `wait()` with low-power WFI (non-RTOS) or semaphore (FreeRTOS)
+- `readline()` with timeout and proper `\r\n` handling
+
+```cpp
+#include "stm32zero-sin.hpp"
+
+// After MX_USARTx_UART_Init()
+stm32zero::sin::init();
+
+// Blocking read with timeout
+char buf[128];
+int n = stm32zero::sin::readline(buf, sizeof(buf), 1000);
+
+// Or use scanf via newlib
+int value;
+scanf("%d", &value);
 ```
 
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
@@ -97,6 +122,18 @@ queue.receive(&msg);
 queue.send_from_isr(&msg);  // ISR-safe
 ```
 
+**Static Mutex & Semaphores**:
+```cpp
+StaticMutex mutex;
+mutex.create();
+{ MutexLock lock(mutex); /* protected code */ }
+
+StaticBinarySemaphore sem;
+sem.create();
+sem.take(pdMS_TO_TICKS(1000));  // wait with timeout
+sem.give_from_isr();            // signal from ISR
+```
+
 ## Requirements
 
 - C++17 or later
@@ -118,17 +155,25 @@ Include path: `STM32ZERO/include`
 Create `stm32zero-conf.h` in your include path (optional):
 
 ```c
-// Debug module UART handle
-#define STM32ZERO_DEBUG_UART        huart3
-#define STM32ZERO_DEBUG_BUFFER_SIZE 4096
+// Stdout module UART handle
+#define STM32ZERO_STDOUT_UART        huart3
+#define STM32ZERO_STDOUT_BUFFER_SIZE 4096
+
+// Stdin module UART handle
+#define STM32ZERO_STDIN_UART         huart3
+#define STM32ZERO_STDIN_BUFFER_SIZE  256
+#define STM32ZERO_STDIN_DMA_SIZE     64
 
 // Microsecond timer instances
-#define STM32ZERO_USTIM_L           TIM3
-#define STM32ZERO_USTIM_M           TIM4
-#define STM32ZERO_USTIM_H           TIM12
+#define STM32ZERO_USTIM_L            TIM3
+#define STM32ZERO_USTIM_M            TIM4
+#define STM32ZERO_USTIM_H            TIM12
+
+// FreeRTOS support
+#define STM32ZERO_RTOS_FREERTOS      1
 
 // Cache line size override (auto-detected if not defined)
-#define STM32ZERO_CACHE_LINE_SIZE   32
+#define STM32ZERO_CACHE_LINE_SIZE    32
 ```
 
 ## Code Style
