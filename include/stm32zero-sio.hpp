@@ -8,7 +8,7 @@
  *   - DMA-based RX with ring buffer and idle line detection
  *   - DMA-based TX with dual buffer
  *   - ISR and Task safe
- *   - printf()/scanf() support via newlib hooks
+ *   - write()/read() based I/O (no printf, no newlib)
  *
  * Configuration (stm32zero-conf.h):
  *   - STM32ZERO_SIO_UART: UART handle name (required, e.g., huart3)
@@ -26,12 +26,10 @@
  *
  *   // Write
  *   sio::write("Hello\r\n", 7);
- *   printf("value=%d\r\n", val);  // via newlib
  *
  *   // Read
  *   char buf[64];
  *   sio::readln(buf, sizeof(buf), 1000);
- *   scanf("%d", &val);  // via newlib
  */
 
 #include <cstdint>
@@ -105,6 +103,19 @@ uint16_t tx_water_mark();
  * @return Number of bytes actually read (0 if buffer empty)
  */
 int read(void* data, size_t len);
+
+/**
+ * Read data from input buffer with timeout
+ *
+ * Blocking until requested bytes received or timeout.
+ * Useful for binary protocols.
+ *
+ * @param data Pointer to destination buffer
+ * @param len Bytes to read
+ * @param timeout_ms Timeout in milliseconds
+ * @return Number of bytes actually read
+ */
+int read(void* data, size_t len, uint32_t timeout_ms);
 
 /**
  * Read a line (until newline character)

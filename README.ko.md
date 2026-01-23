@@ -39,7 +39,7 @@ STM32를 위한 Zero-Overhead C++ 유틸리티 라이브러리
 - TX: Lock-free 이중 버퍼링, 블로킹 없음
 - RX: Idle line 감지 기반 링 버퍼
 - 타임아웃과 `\r\n` 처리가 포함된 `readln()`
-- newlib 훅을 통한 printf()/scanf() 지원
+- write()/read() 기반 I/O (printf 없음, newlib 없음)
 
 ```cpp
 #include "stm32zero-sio.hpp"
@@ -49,12 +49,31 @@ stm32zero::sio::init();
 
 // 쓰기 (어디서든 동작 - task 또는 ISR)
 sio::write("Hello\r\n", 7);
-printf("value=%d\r\n", val);  // newlib 경유
 
 // 타임아웃 있는 읽기
 char buf[128];
 int n = sio::readln(buf, sizeof(buf), 1000);
-scanf("%d", &val);  // newlib 경유
+```
+
+**설계 노트:**
+
+- **최대 처리량을 위한 DMA**: 논블로킹 고속 전송을 위해 HAL + DMA 사용
+- **의도적 printf 제거**: 정적 메모리만 사용하기 위해 제거 (zero-overhead 원칙)
+- **newlib hook 미구현**: newlib 의존성 방지를 위해 `_write`/`_read` 의도적 미구현
+
+**로깅 사용시 주의:**
+
+- **논블로킹 쓰기**: TX 버퍼가 가득 차면 데이터가 **잘림** (대기하지 않음)
+- `tx_water_mark()`로 버퍼 사용량을 모니터링하여 오버플로우 감지
+- 잘림이 자주 발생하면 `STM32ZERO_SIO_TX_SIZE` 증가 필요
+
+```cpp
+// Check buffer usage after heavy logging
+uint16_t wm = sio::tx_water_mark();
+uint16_t size = 4096;  // STM32ZERO_SIO_TX_SIZE
+if (wm > size * 80 / 100) {
+    // Warning: buffer usage exceeded 80%
+}
 ```
 
 ### Serial (`stm32zero-serial.hpp`)

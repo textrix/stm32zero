@@ -351,6 +351,25 @@ int Serial::read(void* data, size_t len)
 	return static_cast<int>(rx_buf_->pop(static_cast<uint8_t*>(data), len));
 }
 
+int Serial::read(void* data, size_t len, uint32_t timeout_ms)
+{
+	if (data == nullptr || len == 0) {
+		return -1;
+	}
+
+	uint8_t* ptr = static_cast<uint8_t*>(data);
+	size_t received = 0;
+
+	while (received < len) {
+		if (!wait(timeout_ms)) {
+			break;
+		}
+		received += read(ptr + received, len - received);
+	}
+
+	return static_cast<int>(received);
+}
+
 bool Serial::wait(uint32_t timeout_ms)
 {
 	if (!rx_buf_->is_empty()) {

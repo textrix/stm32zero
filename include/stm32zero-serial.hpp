@@ -9,6 +9,7 @@
  *   - DMA-based TX (dual buffer) and RX (ring buffer + idle detection)
  *   - Thread-safe with mutex protection
  *   - Blocking readln with timeout
+ *   - write()/read() based I/O (no printf, no newlib)
  *
  * Usage:
  *   // In source file - define serial instance
@@ -121,6 +122,7 @@ public:
 
 	int write(const void* data, size_t len);
 	int read(void* data, size_t len);
+	int read(void* data, size_t len, uint32_t timeout_ms);
 
 	bool wait(uint32_t timeout_ms);
 	int readln(char* buf, size_t len, uint32_t timeout_ms);

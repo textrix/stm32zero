@@ -39,7 +39,7 @@ DMA-based UART input/output with dual buffer TX and ring buffer RX:
 - TX: Lock-free dual buffering, no blocking
 - RX: Ring buffer with idle line detection
 - `readln()` with timeout and proper `\r\n` handling
-- printf()/scanf() support via newlib hooks
+- write()/read() based I/O (no printf, no newlib)
 
 ```cpp
 #include "stm32zero-sio.hpp"
@@ -49,12 +49,31 @@ stm32zero::sio::init();
 
 // Write (works from anywhere - task or ISR)
 sio::write("Hello\r\n", 7);
-printf("value=%d\r\n", val);  // via newlib
 
 // Read with timeout
 char buf[128];
 int n = sio::readln(buf, sizeof(buf), 1000);
-scanf("%d", &val);  // via newlib
+```
+
+**Design Notes:**
+
+- **DMA for maximum throughput**: Uses HAL with DMA for non-blocking, high-speed transfers
+- **No printf by design**: Removed to ensure static-only memory allocation (zero-overhead principle)
+- **No newlib hooks**: `_write`/`_read` are intentionally NOT implemented to avoid newlib dependency
+
+**Important for logging:**
+
+- **Non-blocking write**: If TX buffer is full, data is **truncated** (not waiting)
+- Use `tx_water_mark()` to monitor buffer usage and detect overflow conditions
+- Increase `STM32ZERO_SIO_TX_SIZE` if truncation occurs frequently
+
+```cpp
+// Check buffer usage after heavy logging
+uint16_t wm = sio::tx_water_mark();
+uint16_t size = 4096;  // STM32ZERO_SIO_TX_SIZE
+if (wm > size * 80 / 100) {
+    // Warning: buffer usage exceeded 80%
+}
 ```
 
 ### Serial (`stm32zero-serial.hpp`)

@@ -96,6 +96,11 @@ int read(void* data, size_t len)
 	return sio_serial_.read(data, len);
 }
 
+int read(void* data, size_t len, uint32_t timeout_ms)
+{
+	return sio_serial_.read(data, len, timeout_ms);
+}
+
 int readln(char* buf, size_t len, uint32_t timeout_ms)
 {
 	return sio_serial_.readln(buf, len, timeout_ms);
@@ -130,20 +135,3 @@ SemaphoreHandle_t semaphore()
 
 } // namespace sio
 } // namespace stm32zero
-
-//=============================================================================
-// newlib hooks for printf()/scanf()
-//=============================================================================
-
-extern "C" int _write(int file, char* ptr, int len)
-{
-	(void)file;
-	return stm32zero::sio::write(ptr, len);
-}
-
-extern "C" int _read(int file, char* ptr, int len)
-{
-	(void)file;
-	stm32zero::sio::wait(UINT32_MAX);
-	return stm32zero::sio::read(ptr, len);
-}
