@@ -8,6 +8,9 @@
  *   - CMSIS-RTOS v1/v2 compatible priority enum
  *   - Static task creation with zero-overhead wrapper
  *   - Static queue with type-safe operations
+ *   - Generic RAII guard: ScopedLock<T> for any lockable object
+ *   - RAII mutex locks: MutexLock, RawMutexLock
+ *   - Static mutex and semaphore wrappers
  *
  * Requirements:
  *   - FreeRTOS with CMSIS-RTOS wrapper
@@ -22,15 +25,29 @@
  *
  *   StaticQueue<sizeof(Message), 10> queue;
  *   queue.create();
+ *
+ *   // RAII critical section
+ *   { CriticalSection cs; ... }
+ *
+ *   // RAII mutex lock
+ *   StaticMutex mutex; mutex.create();
+ *   { MutexLock lock(mutex); ... }
+ *
+ *   // Raw handle mutex lock
+ *   SemaphoreHandle_t raw = xSemaphoreCreateMutex();
+ *   { RawMutexLock lock(raw); ... }
  */
 
 #include <cstdint>
 #include <cstddef>
 #include <type_traits>
 
+#include "stm32zero.hpp"
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "semphr.h"
 
 namespace stm32zero {
 namespace freertos {
@@ -400,6 +417,317 @@ inline TickType_t get_tick_count()
 {
 	return xTaskGetTickCount();
 }
+
+//=============================================================================
+// Critical Section (from stm32zero.hpp)
+//=============================================================================
+
+// CriticalSection is defined in stm32zero.hpp
+// Bring it into the freertos namespace for convenience
+using stm32zero::CriticalSection;
+
+//=============================================================================
+// Static Mutex
+//=============================================================================
+
+/**
+ * Static FreeRTOS mutex with RAII support
+ *
+ * Usage:
+ *   StaticMutex g_mutex;
+ *
+ *   void init() {
+ *       g_mutex.create();
+ *   }
+ *
+ *   void thread_safe_function() {
+ *       MutexLock lock(g_mutex);  // auto lock
+ *       if (!lock) return;        // timeout check (optional)
+ *       // ... protected code ...
+ *   }  // auto unlock
+ */
+class StaticMutex {
+public:
+	StaticMutex() = default;
+
+	// Non-copyable, non-movable
+	StaticMutex(const StaticMutex&) = delete;
+	StaticMutex& operator=(const StaticMutex&) = delete;
+	StaticMutex(StaticMutex&&) = delete;
+	StaticMutex& operator=(StaticMutex&&) = delete;
+
+	SemaphoreHandle_t create()
+	{
+		handle_ = xSemaphoreCreateMutexStatic(&tcb_);
+		return handle_;
+	}
+
+	SemaphoreHandle_t handle() const { return handle_; }
+	bool is_created() const { return handle_ != nullptr; }
+
+	bool lock(TickType_t timeout = portMAX_DELAY)
+	{
+		return xSemaphoreTake(handle_, timeout) == pdTRUE;
+	}
+
+	void unlock()
+	{
+		xSemaphoreGive(handle_);
+	}
+
+private:
+	StaticSemaphore_t tcb_{};
+	SemaphoreHandle_t handle_ = nullptr;
+};
+
+//=============================================================================
+// ScopedLock (Generic RAII Guard)
+//=============================================================================
+
+/**
+ * Generic RAII lock guard for any lockable object
+ *
+ * Requirements for Lockable type:
+ *   - bool lock(TickType_t timeout) - acquire lock, return true if successful
+ *   - void unlock() - release lock
+ *
+ * Usage:
+ *   StaticMutex g_mutex;
+ *   StaticBinarySemaphore g_sem;
+ *
+ *   void thread_safe_function() {
+ *       ScopedLock lock(g_mutex);   // auto lock
+ *       if (!lock) return;          // timeout check
+ *       // ... protected code ...
+ *   }  // auto unlock
+ *
+ *   void wait_for_event() {
+ *       ScopedLock lock(g_sem, pdMS_TO_TICKS(1000));
+ *       if (!lock) return;  // timeout
+ *       // ... event handling ...
+ *   }  // auto unlock
+ */
+template<typename Lockable>
+class ScopedLock {
+public:
+	explicit ScopedLock(Lockable& obj, TickType_t timeout = portMAX_DELAY)
+		: obj_(obj), locked_(obj.lock(timeout))
+	{
+	}
+
+	~ScopedLock()
+	{
+		if (locked_) {
+			obj_.unlock();
+		}
+	}
+
+	bool is_locked() const { return locked_; }
+	explicit operator bool() const { return locked_; }
+
+	// Non-copyable, non-movable
+	ScopedLock(const ScopedLock&) = delete;
+	ScopedLock& operator=(const ScopedLock&) = delete;
+	ScopedLock(ScopedLock&&) = delete;
+	ScopedLock& operator=(ScopedLock&&) = delete;
+
+private:
+	Lockable& obj_;
+	bool locked_;
+};
+
+/**
+ * RAII guard for StaticMutex (alias for ScopedLock<StaticMutex>)
+ *
+ * Usage:
+ *   StaticMutex g_mutex;
+ *
+ *   void thread_safe_function() {
+ *       MutexLock lock(g_mutex);
+ *       if (!lock) return;  // timeout
+ *       // ... protected code ...
+ *   }  // auto unlock
+ */
+using MutexLock = ScopedLock<StaticMutex>;
+
+//=============================================================================
+// Static Binary Semaphore
+//=============================================================================
+
+/**
+ * Static FreeRTOS binary semaphore
+ *
+ * Usage:
+ *   StaticBinarySemaphore g_sem;
+ *
+ *   void init() {
+ *       g_sem.create();
+ *   }
+ *
+ *   void wait_for_event() {
+ *       g_sem.take(pdMS_TO_TICKS(1000));  // wait with timeout
+ *   }
+ *
+ *   void ISR_Handler() {
+ *       g_sem.give_from_isr();  // signal from ISR
+ *   }
+ */
+class StaticBinarySemaphore {
+public:
+	StaticBinarySemaphore() = default;
+
+	// Non-copyable, non-movable
+	StaticBinarySemaphore(const StaticBinarySemaphore&) = delete;
+	StaticBinarySemaphore& operator=(const StaticBinarySemaphore&) = delete;
+	StaticBinarySemaphore(StaticBinarySemaphore&&) = delete;
+	StaticBinarySemaphore& operator=(StaticBinarySemaphore&&) = delete;
+
+	SemaphoreHandle_t create()
+	{
+		handle_ = xSemaphoreCreateBinaryStatic(&tcb_);
+		return handle_;
+	}
+
+	SemaphoreHandle_t handle() const { return handle_; }
+	bool is_created() const { return handle_ != nullptr; }
+
+	bool take(TickType_t timeout = portMAX_DELAY)
+	{
+		return xSemaphoreTake(handle_, timeout) == pdTRUE;
+	}
+
+	void give()
+	{
+		xSemaphoreGive(handle_);
+	}
+
+	bool give_from_isr()
+	{
+		BaseType_t woken = pdFALSE;
+		BaseType_t result = xSemaphoreGiveFromISR(handle_, &woken);
+		portYIELD_FROM_ISR(woken);
+		return result == pdTRUE;
+	}
+
+private:
+	StaticSemaphore_t tcb_{};
+	SemaphoreHandle_t handle_ = nullptr;
+};
+
+//=============================================================================
+// Static Counting Semaphore
+//=============================================================================
+
+/**
+ * Static FreeRTOS counting semaphore
+ *
+ * @tparam MaxCount Maximum semaphore count
+ *
+ * Usage:
+ *   StaticCountingSemaphore<10> g_sem;
+ *
+ *   void init() {
+ *       g_sem.create(5);  // initial count = 5
+ *   }
+ *
+ *   void acquire_resource() {
+ *       g_sem.take();
+ *   }
+ *
+ *   void release_resource() {
+ *       g_sem.give();
+ *   }
+ */
+template<UBaseType_t MaxCount>
+class StaticCountingSemaphore {
+public:
+	static_assert(MaxCount > 0, "MaxCount must be greater than 0");
+
+	StaticCountingSemaphore() = default;
+
+	// Non-copyable, non-movable
+	StaticCountingSemaphore(const StaticCountingSemaphore&) = delete;
+	StaticCountingSemaphore& operator=(const StaticCountingSemaphore&) = delete;
+	StaticCountingSemaphore(StaticCountingSemaphore&&) = delete;
+	StaticCountingSemaphore& operator=(StaticCountingSemaphore&&) = delete;
+
+	SemaphoreHandle_t create(UBaseType_t initial_count = 0)
+	{
+		handle_ = xSemaphoreCreateCountingStatic(MaxCount, initial_count, &tcb_);
+		return handle_;
+	}
+
+	SemaphoreHandle_t handle() const { return handle_; }
+	bool is_created() const { return handle_ != nullptr; }
+
+	bool take(TickType_t timeout = portMAX_DELAY)
+	{
+		return xSemaphoreTake(handle_, timeout) == pdTRUE;
+	}
+
+	void give()
+	{
+		xSemaphoreGive(handle_);
+	}
+
+	UBaseType_t count() const
+	{
+		return uxSemaphoreGetCount(handle_);
+	}
+
+	static constexpr UBaseType_t max_count() { return MaxCount; }
+
+private:
+	StaticSemaphore_t tcb_{};
+	SemaphoreHandle_t handle_ = nullptr;
+};
+
+//=============================================================================
+// Raw Mutex Lock (RAII)
+//=============================================================================
+
+/**
+ * RAII guard for raw SemaphoreHandle_t (mutex)
+ *
+ * Use this when working with raw FreeRTOS mutex handles directly.
+ * For StaticMutex, prefer MutexLock (ScopedLock<StaticMutex>) instead.
+ *
+ * Usage:
+ *   SemaphoreHandle_t raw_mutex = xSemaphoreCreateMutex();
+ *
+ *   void thread_safe_function() {
+ *       RawMutexLock lock(raw_mutex);
+ *       if (!lock) return;  // timeout
+ *       // ... protected code ...
+ *   }  // auto unlock
+ */
+class RawMutexLock {
+public:
+	explicit RawMutexLock(SemaphoreHandle_t mutex, TickType_t timeout = portMAX_DELAY)
+		: mutex_(mutex), locked_(xSemaphoreTake(mutex, timeout) == pdTRUE)
+	{
+	}
+
+	~RawMutexLock()
+	{
+		if (locked_) {
+			xSemaphoreGive(mutex_);
+		}
+	}
+
+	bool is_locked() const { return locked_; }
+	explicit operator bool() const { return locked_; }
+
+	// Non-copyable, non-movable
+	RawMutexLock(const RawMutexLock&) = delete;
+	RawMutexLock& operator=(const RawMutexLock&) = delete;
+	RawMutexLock(RawMutexLock&&) = delete;
+	RawMutexLock& operator=(RawMutexLock&&) = delete;
+
+private:
+	SemaphoreHandle_t mutex_;
+	bool locked_;
+};
 
 } // namespace freertos
 } // namespace stm32zero

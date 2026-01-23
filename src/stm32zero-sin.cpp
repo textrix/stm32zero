@@ -273,49 +273,6 @@ size_t buffer_size()
 	return ring_buffer_.size();
 }
 
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-int readline(char* buf, size_t len, TickType_t timeout)
-{
-	if (buf == nullptr || len == 0) {
-		return -1;
-	}
-
-	size_t pos = 0;
-	size_t max_chars = len - 1;  // Reserve space for null terminator
-
-	while (pos < max_chars) {
-		if (!wait(timeout)) {
-			// Timeout
-			if (pos == 0) {
-				buf[0] = '\0';
-				return -1;
-			}
-			break;
-		}
-
-		bool found = false;
-		size_t n = ring_buffer_.pop_until(
-			reinterpret_cast<uint8_t*>(buf + pos),
-			max_chars - pos,
-			'\n',
-			&found
-		);
-
-		pos += n;
-
-		if (found) {
-			// Strip trailing \n or \r
-			while (pos > 0 && (buf[pos - 1] == '\n' || buf[pos - 1] == '\r')) {
-				pos--;
-			}
-			break;
-		}
-	}
-
-	buf[pos] = '\0';
-	return static_cast<int>(pos);
-}
-#else
 int readline(char* buf, size_t len, uint32_t timeout_ms)
 {
 	if (buf == nullptr || len == 0) {
@@ -323,7 +280,7 @@ int readline(char* buf, size_t len, uint32_t timeout_ms)
 	}
 
 	size_t pos = 0;
-	size_t max_chars = len - 1;
+	size_t max_chars = len - 1;  // Reserve space for null terminator
 
 	while (pos < max_chars) {
 		if (!wait(timeout_ms)) {
@@ -357,26 +314,24 @@ int readline(char* buf, size_t len, uint32_t timeout_ms)
 	buf[pos] = '\0';
 	return static_cast<int>(pos);
 }
-#endif
 
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-bool wait(TickType_t timeout)
+bool wait(uint32_t timeout_ms)
 {
 	if (!ring_buffer_.is_empty()) {
 		return true;
 	}
 
-	return rx_sem_.take(timeout);
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	return rx_sem_.take(pdMS_TO_TICKS(timeout_ms));
+#else
+	return wait_until([]{ return !ring_buffer_.is_empty(); }, timeout_ms);
+#endif
 }
 
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 SemaphoreHandle_t semaphore()
 {
 	return rx_sem_.handle();
-}
-#else
-bool wait(uint32_t timeout_ms)
-{
-	return wait_until([]{ return !ring_buffer_.is_empty(); }, timeout_ms);
 }
 #endif
 
@@ -390,10 +345,6 @@ bool wait(uint32_t timeout_ms)
 extern "C" int _read(int file, char* ptr, int len)
 {
 	(void)file;
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-	stm32zero::sin::wait();
-#else
 	stm32zero::sin::wait(UINT32_MAX);
-#endif
 	return stm32zero::sin::read(ptr, len);
 }

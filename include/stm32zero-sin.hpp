@@ -40,7 +40,6 @@
 #include <cstddef>
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-#include "FreeRTOS.h"
 #include "semphr.h"
 #endif
 
@@ -71,18 +70,18 @@ void init();
  */
 int read(void* data, size_t len);
 
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 /**
  * Wait until data is available
  *
- * Task context only. Blocks until data is available or timeout.
- * Use with read() for blocking input pattern.
+ * FreeRTOS: blocks on semaphore
+ * Bare-metal: uses WFI instruction for low-power wait
  *
- * @param timeout Ticks to wait (default: portMAX_DELAY for infinite)
+ * @param timeout_ms Timeout in milliseconds (default: UINT32_MAX for infinite)
  * @return true if data available, false if timeout
  */
-bool wait(TickType_t timeout = portMAX_DELAY);
+bool wait(uint32_t timeout_ms = UINT32_MAX);
 
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 /**
  * Get internal semaphore handle
  *
@@ -92,16 +91,6 @@ bool wait(TickType_t timeout = portMAX_DELAY);
  * @return FreeRTOS semaphore handle
  */
 SemaphoreHandle_t semaphore();
-#else
-/**
- * Wait until data is available (low-power)
- *
- * Uses WFI instruction between checks for power efficiency.
- *
- * @param timeout_ms Timeout in milliseconds (0 = non-blocking)
- * @return true if data available, false if timeout
- */
-bool wait(uint32_t timeout_ms);
 #endif
 
 /**
@@ -113,14 +102,10 @@ bool wait(uint32_t timeout_ms);
  *
  * @param buf Destination buffer
  * @param len Buffer size (including null terminator)
- * @param timeout Timeout (FreeRTOS: ticks, bare-metal: milliseconds)
+ * @param timeout_ms Timeout in milliseconds (default: UINT32_MAX for infinite)
  * @return Number of characters read (excluding null), -1 on timeout with no data
  */
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-int readline(char* buf, size_t len, TickType_t timeout = portMAX_DELAY);
-#else
-int readline(char* buf, size_t len, uint32_t timeout_ms);
-#endif
+int readline(char* buf, size_t len, uint32_t timeout_ms = UINT32_MAX);
 
 /**
  * Get number of bytes available to read
