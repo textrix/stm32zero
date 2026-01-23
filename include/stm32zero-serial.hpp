@@ -8,7 +8,7 @@
  *   - Multiple UART instances with independent buffers
  *   - DMA-based TX (dual buffer) and RX (ring buffer + idle detection)
  *   - Thread-safe with mutex protection
- *   - Blocking readline with timeout
+ *   - Blocking readln with timeout
  *
  * Usage:
  *   // In source file - define serial instance
@@ -21,7 +21,7 @@
  *
  *   // Use
  *   debug.write("Hello\n", 6);
- *   gps.readline(buf, sizeof(buf), 1000);
+ *   gps.readln(buf, sizeof(buf), 1000);
  */
 
 #include <cstdint>
@@ -117,7 +117,7 @@ public:
 	int read(void* data, size_t len);
 
 	bool wait(uint32_t timeout_ms);
-	int readline(char* buf, size_t len, uint32_t timeout_ms);
+	int readln(char* buf, size_t len, uint32_t timeout_ms);
 
 	size_t available();
 	bool is_empty();

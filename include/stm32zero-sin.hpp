@@ -105,7 +105,7 @@ SemaphoreHandle_t semaphore();
  * @param timeout_ms Timeout in milliseconds (default: UINT32_MAX for infinite)
  * @return Number of characters read (excluding null), -1 on timeout with no data
  */
-int readline(char* buf, size_t len, uint32_t timeout_ms = UINT32_MAX);
+int readln(char* buf, size_t len, uint32_t timeout_ms = UINT32_MAX);
 
 /**
  * Get number of bytes available to read

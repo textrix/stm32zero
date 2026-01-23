@@ -337,7 +337,7 @@ bool Serial::wait(uint32_t timeout_ms)
 #endif
 }
 
-int Serial::readline(char* buf, size_t len, uint32_t timeout_ms)
+int Serial::readln(char* buf, size_t len, uint32_t timeout_ms)
 {
 	if (buf == nullptr || len == 0) {
 		return -1;

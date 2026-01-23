@@ -97,9 +97,7 @@ __STATIC_FORCEINLINE uint64_t get()
 		m2 = STM32ZERO_USTIM_M->CNT;
 	} while (l2 < l1 || m2 < m1);
 
-	return (static_cast<uint64_t>(h) << 32) |
-	       (static_cast<uint64_t>(m2) << 16) |
-	       static_cast<uint64_t>(l2);
+	return (static_cast<uint64_t>(h) << 32) | (static_cast<uint64_t>(m2) << 16) | static_cast<uint64_t>(l2);
 }
 
 /**

@@ -273,7 +273,7 @@ size_t buffer_size()
 	return ring_buffer_.size();
 }
 
-int readline(char* buf, size_t len, uint32_t timeout_ms)
+int readln(char* buf, size_t len, uint32_t timeout_ms)
 {
 	if (buf == nullptr || len == 0) {
 		return -1;
