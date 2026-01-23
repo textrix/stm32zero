@@ -31,45 +31,48 @@ Basic utilities for embedded development:
 - `STM32ZERO_DTCM` - Place data in DTCM RAM (fast access, no cache)
 - `STM32ZERO_DMA` / `STM32ZERO_DMA_TX` / `STM32ZERO_DMA_RX` - DMA-safe memory regions
 
-### Stdout (`stm32zero-sout.hpp`)
+### Serial I/O (`stm32zero-sio.hpp`)
 
-DMA-based printf output with lock-free dual buffering:
+DMA-based UART input/output with dual buffer TX and ring buffer RX:
 
 - ISR and Task safe (auto-detects context)
-- No blocking - data queued to buffer
-- Auto callback registration
+- TX: Lock-free dual buffering, no blocking
+- RX: Ring buffer with idle line detection
+- `readln()` with timeout and proper `\r\n` handling
+- printf()/scanf() support via newlib hooks
 
 ```cpp
-#include "stm32zero-sout.hpp"
+#include "stm32zero-sio.hpp"
 
 // After MX_USARTx_UART_Init()
-stm32zero::sout::init();
+stm32zero::sio::init();
 
-// Works from anywhere (task or ISR)
-printf("Hello, World!\r\n");
+// Write (works from anywhere - task or ISR)
+sio::write("Hello\r\n", 7);
+printf("value=%d\r\n", val);  // via newlib
+
+// Read with timeout
+char buf[128];
+int n = sio::readln(buf, sizeof(buf), 1000);
+scanf("%d", &val);  // via newlib
 ```
 
-### Stdin (`stm32zero-sin.hpp`)
+### Serial (`stm32zero-serial.hpp`)
 
-DMA-based UART RX with idle line detection:
-
-- Ring buffer with atomic `pop_until()` for efficient line reading
-- `wait()` with low-power WFI (non-RTOS) or semaphore (FreeRTOS)
-- `readline()` with timeout and proper `\r\n` handling
+Multi-instance UART support for additional serial ports:
 
 ```cpp
-#include "stm32zero-sin.hpp"
+#include "stm32zero-serial.hpp"
+
+// Define serial instance with buffer sizes
+DEFINE_SERIAL(gps, huart2, 512, 128, 64);
 
 // After MX_USARTx_UART_Init()
-stm32zero::sin::init();
+INIT_SERIAL(gps, huart2, 64);
 
-// Blocking read with timeout
-char buf[128];
-int n = stm32zero::sin::readline(buf, sizeof(buf), 1000);
-
-// Or use scanf via newlib
-int value;
-scanf("%d", &value);
+// Use
+gps.write("$PMTK...\r\n", 10);
+gps.readln(buf, sizeof(buf), 1000);
 ```
 
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
@@ -155,25 +158,22 @@ Include path: `STM32ZERO/include`
 Create `stm32zero-conf.h` in your include path (optional):
 
 ```c
-// Stdout module UART handle
-#define STM32ZERO_STDOUT_UART        huart3
-#define STM32ZERO_STDOUT_BUFFER_SIZE 4096
-
-// Stdin module UART handle
-#define STM32ZERO_STDIN_UART         huart3
-#define STM32ZERO_STDIN_BUFFER_SIZE  256
-#define STM32ZERO_STDIN_DMA_SIZE     64
+// Serial I/O module UART handle
+#define STM32ZERO_SIO_UART      huart3
+#define STM32ZERO_SIO_RX_SIZE   256
+#define STM32ZERO_SIO_TX_SIZE   4096
+#define STM32ZERO_SIO_DMA_SIZE  64
 
 // Microsecond timer instances
-#define STM32ZERO_USTIM_L            TIM3
-#define STM32ZERO_USTIM_M            TIM4
-#define STM32ZERO_USTIM_H            TIM12
+#define STM32ZERO_USTIM_L       TIM3
+#define STM32ZERO_USTIM_M       TIM4
+#define STM32ZERO_USTIM_H       TIM12
 
 // FreeRTOS support
-#define STM32ZERO_RTOS_FREERTOS      1
+#define STM32ZERO_RTOS_FREERTOS 1
 
 // Cache line size override (auto-detected if not defined)
-#define STM32ZERO_CACHE_LINE_SIZE    32
+#define STM32ZERO_CACHE_LINE_SIZE 32
 ```
 
 ## Code Style

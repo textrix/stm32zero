@@ -31,45 +31,48 @@ STM32를 위한 Zero-Overhead C++ 유틸리티 라이브러리
 - `STM32ZERO_DTCM` - DTCM RAM에 데이터 배치 (빠른 접근, 캐시 없음)
 - `STM32ZERO_DMA` / `STM32ZERO_DMA_TX` / `STM32ZERO_DMA_RX` - DMA 안전 메모리 영역
 
-### Stdout (`stm32zero-sout.hpp`)
+### Serial I/O (`stm32zero-sio.hpp`)
 
-Lock-free 이중 버퍼링 기반 DMA printf 출력:
+듀얼 버퍼 TX와 링 버퍼 RX 기반 DMA UART 입출력:
 
 - ISR과 Task 모두 안전 (컨텍스트 자동 감지)
-- 블로킹 없음 - 데이터는 버퍼에 큐잉
-- 콜백 자동 등록
+- TX: Lock-free 이중 버퍼링, 블로킹 없음
+- RX: Idle line 감지 기반 링 버퍼
+- 타임아웃과 `\r\n` 처리가 포함된 `readln()`
+- newlib 훅을 통한 printf()/scanf() 지원
 
 ```cpp
-#include "stm32zero-sout.hpp"
+#include "stm32zero-sio.hpp"
 
 // MX_USARTx_UART_Init() 이후
-stm32zero::sout::init();
+stm32zero::sio::init();
 
-// 어디서든 동작 (task 또는 ISR)
-printf("Hello, World!\r\n");
+// 쓰기 (어디서든 동작 - task 또는 ISR)
+sio::write("Hello\r\n", 7);
+printf("value=%d\r\n", val);  // newlib 경유
+
+// 타임아웃 있는 읽기
+char buf[128];
+int n = sio::readln(buf, sizeof(buf), 1000);
+scanf("%d", &val);  // newlib 경유
 ```
 
-### Stdin (`stm32zero-sin.hpp`)
+### Serial (`stm32zero-serial.hpp`)
 
-Idle line 감지 기반 DMA UART RX:
-
-- 효율적인 라인 읽기를 위한 atomic `pop_until()` 링 버퍼
-- 저전력 WFI (non-RTOS) 또는 세마포어 (FreeRTOS) 기반 `wait()`
-- 타임아웃과 `\r\n` 처리가 포함된 `readline()`
+추가 시리얼 포트를 위한 다중 인스턴스 UART 지원:
 
 ```cpp
-#include "stm32zero-sin.hpp"
+#include "stm32zero-serial.hpp"
+
+// 버퍼 크기와 함께 시리얼 인스턴스 정의
+DEFINE_SERIAL(gps, huart2, 512, 128, 64);
 
 // MX_USARTx_UART_Init() 이후
-stm32zero::sin::init();
+INIT_SERIAL(gps, huart2, 64);
 
-// 타임아웃 있는 블로킹 읽기
-char buf[128];
-int n = stm32zero::sin::readline(buf, sizeof(buf), 1000);
-
-// 또는 newlib를 통한 scanf
-int value;
-scanf("%d", &value);
+// 사용
+gps.write("$PMTK...\r\n", 10);
+gps.readln(buf, sizeof(buf), 1000);
 ```
 
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
@@ -155,25 +158,22 @@ Include 경로: `STM32ZERO/include`
 프로젝트 include 경로에 `stm32zero-conf.h` 생성 (선택사항):
 
 ```c
-// Stdout 모듈 UART 핸들
-#define STM32ZERO_STDOUT_UART        huart3
-#define STM32ZERO_STDOUT_BUFFER_SIZE 4096
-
-// Stdin 모듈 UART 핸들
-#define STM32ZERO_STDIN_UART         huart3
-#define STM32ZERO_STDIN_BUFFER_SIZE  256
-#define STM32ZERO_STDIN_DMA_SIZE     64
+// Serial I/O 모듈 UART 핸들
+#define STM32ZERO_SIO_UART      huart3
+#define STM32ZERO_SIO_RX_SIZE   256
+#define STM32ZERO_SIO_TX_SIZE   4096
+#define STM32ZERO_SIO_DMA_SIZE  64
 
 // 마이크로초 타이머 인스턴스
-#define STM32ZERO_USTIM_L            TIM3
-#define STM32ZERO_USTIM_M            TIM4
-#define STM32ZERO_USTIM_H            TIM12
+#define STM32ZERO_USTIM_L       TIM3
+#define STM32ZERO_USTIM_M       TIM4
+#define STM32ZERO_USTIM_H       TIM12
 
 // FreeRTOS 지원
-#define STM32ZERO_RTOS_FREERTOS      1
+#define STM32ZERO_RTOS_FREERTOS 1
 
 // 캐시 라인 크기 오버라이드 (미정의시 자동 감지)
-#define STM32ZERO_CACHE_LINE_SIZE    32
+#define STM32ZERO_CACHE_LINE_SIZE 32
 ```
 
 ## 코드 스타일
