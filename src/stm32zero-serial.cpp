@@ -35,6 +35,11 @@ size_t RingBuffer::push(const uint8_t* data, size_t len)
 		head_ = (head_ + 1) % size_;
 	}
 
+	uint16_t used = used_locked();
+	if (used > water_mark_) {
+		water_mark_ = used;
+	}
+
 	return written;
 }
 
@@ -176,6 +181,10 @@ int DualBuffer::write(const void* data, size_t len)
 			fill_pos_[idx] = pos + to_write;
 			written = to_write;
 
+			if (water_mark_[idx] < fill_pos_[idx]) {
+				water_mark_[idx] = fill_pos_[idx];
+			}
+
 			if (!tx_busy_) {
 				start_dma_locked();
 			}
@@ -183,6 +192,24 @@ int DualBuffer::write(const void* data, size_t len)
 	}
 
 	return written;
+}
+
+bool DualBuffer::flush()
+{
+	CriticalSection cs;
+
+	if (!tx_busy_ && fill_pos_[fill_idx_] > 0) {
+		return start_dma_locked();
+	}
+
+	return false;
+}
+
+uint16_t DualBuffer::water_mark() const
+{
+	uint16_t wm0 = water_mark_[0];
+	uint16_t wm1 = water_mark_[1];
+	return (wm0 > wm1) ? wm0 : wm1;
 }
 
 void DualBuffer::tx_complete_isr()
@@ -377,6 +404,11 @@ int Serial::readln(char* buf, size_t len, uint32_t timeout_ms)
 	return static_cast<int>(pos);
 }
 
+bool Serial::flush()
+{
+	return tx_buf_->flush();
+}
+
 size_t Serial::available()
 {
 	return rx_buf_->available();
@@ -390,6 +422,21 @@ bool Serial::is_empty()
 bool Serial::is_tx_busy()
 {
 	return tx_buf_->is_busy();
+}
+
+uint16_t Serial::pending()
+{
+	return tx_buf_->pending();
+}
+
+uint16_t Serial::rx_water_mark()
+{
+	return rx_buf_->water_mark();
+}
+
+uint16_t Serial::tx_water_mark()
+{
+	return tx_buf_->water_mark();
 }
 
 } // namespace serial

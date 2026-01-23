@@ -53,6 +53,7 @@ public:
 	size_t available() const;
 	bool is_empty() const;
 	size_t size() const { return size_; }
+	uint16_t water_mark() const { return water_mark_; }
 
 private:
 	bool is_empty_locked() const;
@@ -65,6 +66,7 @@ private:
 	size_t size_ = 0;
 	volatile uint16_t head_ = 0;
 	volatile uint16_t tail_ = 0;
+	volatile uint16_t water_mark_ = 0;
 };
 
 //=============================================================================
@@ -82,8 +84,11 @@ public:
 
 	int write(const void* data, size_t len);
 	void tx_complete_isr();
+	bool flush();
 
 	bool is_busy() const { return tx_busy_; }
+	uint16_t pending() const { return fill_pos_[fill_idx_]; }
+	uint16_t water_mark() const;
 	size_t size() const { return size_; }
 
 private:
@@ -94,6 +99,7 @@ private:
 	volatile uint16_t fill_pos_[2] = {0, 0};
 	volatile uint8_t fill_idx_ = 0;
 	volatile bool tx_busy_ = false;
+	volatile uint16_t water_mark_[2] = {0, 0};
 
 	TxStartFunc tx_func_ = nullptr;
 	void* tx_ctx_ = nullptr;
@@ -119,11 +125,19 @@ public:
 	bool wait(uint32_t timeout_ms);
 	int readln(char* buf, size_t len, uint32_t timeout_ms);
 
+	bool flush();
 	size_t available();
 	bool is_empty();
 	bool is_tx_busy();
+	uint16_t pending();
+	uint16_t rx_water_mark();
+	uint16_t tx_water_mark();
 
 	UART_HandleTypeDef* handle() const { return huart_; }
+
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	SemaphoreHandle_t semaphore() { return rx_sem_.handle(); }
+#endif
 
 	// ISR callbacks (called internally)
 	void rx_event_isr(uint16_t size);
