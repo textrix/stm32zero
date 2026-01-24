@@ -2,7 +2,10 @@
 #define STM32ZERO_SIO_HPP
 
 /**
- * STM32ZERO Serial I/O Module - DMA-based UART input/output
+ * STM32ZERO Serial I/O Module - Default UART for debug/console
+ *
+ * sio is the default UART interface configured via stm32zero-conf.h.
+ * For additional UARTs, use DEFINE_SERIAL() from stm32zero-serial.hpp.
  *
  * Features:
  *   - DMA-based RX with ring buffer and idle line detection
@@ -22,14 +25,15 @@
  *   - USE_HAL_UART_REGISTER_CALLBACKS=1 in stm32h7xx_hal_conf.h
  *
  * Usage:
+ *   // Default UART (sio)
  *   stm32zero::sio::init();
- *
- *   // Write
  *   sio::write("Hello\r\n", 7);
- *
- *   // Read
- *   char buf[64];
  *   sio::readln(buf, sizeof(buf), 1000);
+ *
+ *   // Additional UARTs - use stm32zero-serial.hpp
+ *   DEFINE_SERIAL(gps, huart2, 512, 128, 64);
+ *   INIT_SERIAL(gps, huart2, 64);
+ *   gps.write(cmd, len);
  */
 
 #include <cstdint>

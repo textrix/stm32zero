@@ -99,6 +99,21 @@
  */
 // #define STM32ZERO_SIO_DMA_SIZE  64
 
+/**
+ * Disable printf/scanf support
+ *
+ * By default, _write() and _read() syscalls are redirected to sio module,
+ * allowing standard printf() and scanf() to work via DMA-backed serial I/O.
+ *
+ * Define this macro to disable stdio support:
+ *   - Reduces code size (no newlib printf/scanf)
+ *   - Eliminates unpredictable stack usage
+ *   - No heap usage from stdio
+ *
+ * Default: enabled (commented out)
+ */
+// #define STM32ZERO_SIO_NO_STDIO  1
+
 //=============================================================================
 // RTOS Selection
 //=============================================================================

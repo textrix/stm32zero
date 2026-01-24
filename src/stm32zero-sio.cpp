@@ -3,6 +3,7 @@
  */
 
 #include "main.h"
+#include "stm32zero.hpp"
 #include "stm32zero-sio.hpp"
 #include "stm32zero-serial.hpp"
 
@@ -135,3 +136,33 @@ SemaphoreHandle_t semaphore()
 
 } // namespace sio
 } // namespace stm32zero
+
+//=============================================================================
+// printf/scanf support (enabled by default)
+//=============================================================================
+
+#if !defined(STM32ZERO_SIO_NO_STDIO)
+
+extern "C" int _write(int file, char* ptr, int len)
+{
+	(void)file;
+	stm32zero::sio::write(ptr, static_cast<size_t>(len));
+	return len;
+}
+
+extern "C" int _read(int file, char* ptr, int len)
+{
+	(void)file;
+
+	// Block until at least 1 byte is available
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	while (stm32zero::sio::is_empty()) {
+		stm32zero::sio::wait(portMAX_DELAY);
+	}
+#else
+	stm32zero::wait_until([]{ return !stm32zero::sio::is_empty(); }, UINT32_MAX);
+#endif
+	return stm32zero::sio::read(ptr, static_cast<size_t>(len));
+}
+
+#endif // !STM32ZERO_SIO_NO_STDIO

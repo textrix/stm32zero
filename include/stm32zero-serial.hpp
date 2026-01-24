@@ -4,6 +4,9 @@
 /**
  * STM32ZERO Serial Module - Multi-UART support with DMA
  *
+ * For the default/primary UART, use stm32zero-sio.hpp instead.
+ * This module is for defining additional UART instances.
+ *
  * Features:
  *   - Multiple UART instances with independent buffers
  *   - DMA-based TX (dual buffer) and RX (ring buffer + idle detection)
@@ -12,16 +15,14 @@
  *   - write()/read() based I/O (no printf, no newlib)
  *
  * Usage:
- *   // In source file - define serial instance
- *   DEFINE_SERIAL(debug, huart1, 256, 256, 64);
+ *   // In source file (.cpp) - define serial instance
  *   DEFINE_SERIAL(gps, huart2, 512, 128, 64);
  *
  *   // Initialize after MX_USARTx_UART_Init()
- *   debug.init();
- *   gps.init();
+ *   INIT_SERIAL(gps, huart2, 64);
  *
  *   // Use
- *   debug.write("Hello\n", 6);
+ *   gps.write(cmd, len);
  *   gps.readln(buf, sizeof(buf), 1000);
  */
 
@@ -170,16 +171,18 @@ private:
 /**
  * Define a serial instance with proper memory sections
  *
+ * IMPORTANT: Use in source file (.cpp) only, not in headers.
+ *
  * @param name      Instance name (used as variable name)
- * @param huart     UART handle (e.g., huart1)
+ * @param huart     UART handle (e.g., huart2)
  * @param rx_size   RX ring buffer size in bytes
  * @param tx_size   TX dual buffer size in bytes (each buffer)
  * @param dma_size  RX DMA buffer size in bytes
  *
  * Usage:
- *   DEFINE_SERIAL(debug, huart1, 256, 256, 64);
- *   debug.init();
- *   debug.write("Hello\n", 6);
+ *   DEFINE_SERIAL(gps, huart2, 512, 128, 64);
+ *   INIT_SERIAL(gps, huart2, 64);
+ *   gps.write(cmd, len);
  */
 #define DEFINE_SERIAL(name, huart, rx_size, tx_size, dma_size) \
 	STM32ZERO_DMA_RX static stm32zero::DmaBuffer<dma_size> name##_rx_dma_; \
