@@ -5,7 +5,7 @@
 #include "main.h"
 #include "stm32zero.hpp"
 #include "stm32zero-sio.hpp"
-#include "stm32zero-serial.hpp"
+#include "stm32zero-uart.hpp"
 
 //=============================================================================
 // Configuration
@@ -35,10 +35,10 @@
 extern UART_HandleTypeDef STM32ZERO_SIO_UART;
 
 //=============================================================================
-// Serial instance
+// Uart instance
 //=============================================================================
 
-DEFINE_SERIAL(sio_serial_, STM32ZERO_SIO_UART, STM32ZERO_SIO_RX_SIZE, STM32ZERO_SIO_TX_SIZE, STM32ZERO_SIO_DMA_SIZE);
+STM32ZERO_DEFINE_UART(sio_uart_, STM32ZERO_SIO_UART, STM32ZERO_SIO_TX_SIZE, STM32ZERO_SIO_RX_SIZE, STM32ZERO_SIO_DMA_SIZE);
 
 static bool initialized_ = false;
 
@@ -56,7 +56,7 @@ void init()
 	}
 	initialized_ = true;
 
-	INIT_SERIAL(sio_serial_, STM32ZERO_SIO_UART, STM32ZERO_SIO_DMA_SIZE);
+	STM32ZERO_INIT_UART(sio_uart_, STM32ZERO_SIO_UART);
 }
 
 //-----------------------------------------------------------------------------
@@ -65,27 +65,27 @@ void init()
 
 int write(const void* data, size_t len)
 {
-	return sio_serial_.write(data, len);
+	return sio_uart_.write(data, len);
 }
 
 bool flush()
 {
-	return sio_serial_.flush();
+	return sio_uart_.flush();
 }
 
 bool is_tx_busy()
 {
-	return sio_serial_.is_tx_busy();
+	return sio_uart_.is_tx_busy();
 }
 
 uint16_t tx_pending()
 {
-	return sio_serial_.pending();
+	return sio_uart_.pending();
 }
 
 uint16_t tx_water_mark()
 {
-	return sio_serial_.tx_water_mark();
+	return sio_uart_.tx_water_mark();
 }
 
 //-----------------------------------------------------------------------------
@@ -94,43 +94,43 @@ uint16_t tx_water_mark()
 
 int read(void* data, size_t len)
 {
-	return sio_serial_.read(data, len);
+	return sio_uart_.read(data, len);
 }
 
 int read(void* data, size_t len, uint32_t timeout_ms)
 {
-	return sio_serial_.read(data, len, timeout_ms);
+	return sio_uart_.read(data, len, timeout_ms);
 }
 
 int readln(char* buf, size_t len, uint32_t timeout_ms)
 {
-	return sio_serial_.readln(buf, len, timeout_ms);
+	return sio_uart_.readln(buf, len, timeout_ms);
 }
 
 bool wait(uint32_t timeout_ms)
 {
-	return sio_serial_.wait(timeout_ms);
+	return sio_uart_.wait(timeout_ms);
 }
 
 size_t available()
 {
-	return sio_serial_.available();
+	return sio_uart_.available();
 }
 
 bool is_empty()
 {
-	return sio_serial_.is_empty();
+	return sio_uart_.is_empty();
 }
 
 uint16_t rx_water_mark()
 {
-	return sio_serial_.rx_water_mark();
+	return sio_uart_.rx_water_mark();
 }
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 SemaphoreHandle_t semaphore()
 {
-	return sio_serial_.semaphore();
+	return sio_uart_.semaphore();
 }
 #endif
 

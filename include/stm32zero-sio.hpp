@@ -5,7 +5,7 @@
  * STM32ZERO Serial I/O Module - Default UART for debug/console
  *
  * sio is the default UART interface configured via stm32zero-conf.h.
- * For additional UARTs, use DEFINE_SERIAL() from stm32zero-serial.hpp.
+ * For additional UARTs, use STM32ZERO_DEFINE_UART() from stm32zero-uart.hpp.
  *
  * Features:
  *   - DMA-based RX with ring buffer and idle line detection
@@ -30,9 +30,9 @@
  *   sio::write("Hello\r\n", 7);
  *   sio::readln(buf, sizeof(buf), 1000);
  *
- *   // Additional UARTs - use stm32zero-serial.hpp
- *   DEFINE_SERIAL(gps, huart2, 512, 128, 64);
- *   INIT_SERIAL(gps, huart2, 64);
+ *   // Additional UARTs - use stm32zero-uart.hpp
+ *   STM32ZERO_DEFINE_UART(gps, huart2, 128, 512);
+ *   STM32ZERO_INIT_UART(gps, huart2);
  *   gps.write(cmd, len);
  */
 

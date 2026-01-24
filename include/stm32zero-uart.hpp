@@ -1,8 +1,8 @@
-#ifndef STM32ZERO_SERIAL_HPP
-#define STM32ZERO_SERIAL_HPP
+#ifndef STM32ZERO_UART_HPP
+#define STM32ZERO_UART_HPP
 
 /**
- * STM32ZERO Serial Module - Multi-UART support with DMA
+ * STM32ZERO UART Module - Multi-UART support with DMA
  *
  * For the default/primary UART, use stm32zero-sio.hpp instead.
  * This module is for defining additional UART instances.
@@ -15,11 +15,12 @@
  *   - write()/read() based I/O (no printf, no newlib)
  *
  * Usage:
- *   // In source file (.cpp) - define serial instance
- *   DEFINE_SERIAL(gps, huart2, 512, 128, 64);
+ *   // In source file (.cpp) - define uart instance
+ *   STM32ZERO_DEFINE_UART(gps, huart2, 128, 512);         // rx_dma = 128
+ *   STM32ZERO_DEFINE_UART(gps, huart2, 128, 512, 64);     // rx_dma = 64
  *
  *   // Initialize after MX_USARTx_UART_Init()
- *   INIT_SERIAL(gps, huart2, 64);
+ *   STM32ZERO_INIT_UART(gps, huart2);
  *
  *   // Use
  *   gps.write(cmd, len);
@@ -36,7 +37,7 @@
 #endif
 
 namespace stm32zero {
-namespace serial {
+namespace uart {
 
 //=============================================================================
 // RingBuffer (for RX)
@@ -108,12 +109,12 @@ private:
 };
 
 //=============================================================================
-// Serial
+// Uart
 //=============================================================================
 
-class Serial {
+class Uart {
 public:
-	Serial() = default;
+	Uart() = default;
 
 	void init(UART_HandleTypeDef* huart,
 		  RingBuffer* rx_buf,
@@ -161,37 +162,39 @@ private:
 #endif
 };
 
-} // namespace serial
+} // namespace uart
 } // namespace stm32zero
 
 //=============================================================================
-// DEFINE_SERIAL Macro
+// STM32ZERO_DEFINE_UART Macro
 //=============================================================================
 
 /**
- * Define a serial instance with proper memory sections
+ * Define a uart instance with proper memory sections
  *
  * IMPORTANT: Use in source file (.cpp) only, not in headers.
  *
- * @param name      Instance name (used as variable name)
- * @param huart     UART handle (e.g., huart2)
- * @param rx_size   RX ring buffer size in bytes
- * @param tx_size   TX dual buffer size in bytes (each buffer)
- * @param dma_size  RX DMA buffer size in bytes
+ * @param name         Instance name (used as variable name)
+ * @param huart        UART handle (e.g., huart2)
+ * @param tx_size      TX dual buffer size in bytes (each buffer)
+ * @param rx_size      RX ring buffer size in bytes
+ * @param rx_dma_size  (optional) RX DMA buffer size, default = rx_size / 4
  *
  * Usage:
- *   DEFINE_SERIAL(gps, huart2, 512, 128, 64);
- *   INIT_SERIAL(gps, huart2, 64);
+ *   STM32ZERO_DEFINE_UART(gps, huart2, 128, 512);        // rx_dma = 128
+ *   STM32ZERO_DEFINE_UART(gps, huart2, 128, 512, 64);    // rx_dma = 64
+ *   STM32ZERO_INIT_UART(gps, huart2);
  *   gps.write(cmd, len);
  */
-#define DEFINE_SERIAL(name, huart, rx_size, tx_size, dma_size) \
-	STM32ZERO_DMA_RX static stm32zero::DmaBuffer<dma_size> name##_rx_dma_; \
+#define STM32ZERO_DEFINE_UART_IMPL_(name, huart, tx_size, rx_size, rx_dma_size) \
+	STM32ZERO_DMA_RX static stm32zero::DmaBuffer<rx_dma_size> name##_rx_dma_; \
 	STM32ZERO_DMA_TX static stm32zero::DmaBuffer<tx_size> name##_tx_dma0_; \
 	STM32ZERO_DMA_TX static stm32zero::DmaBuffer<tx_size> name##_tx_dma1_; \
 	STM32ZERO_DTCM static uint8_t name##_rx_buf_storage_[rx_size]; \
-	STM32ZERO_DTCM static stm32zero::serial::RingBuffer name##_rx_buf_; \
-	STM32ZERO_DTCM static stm32zero::serial::DualBuffer name##_tx_buf_; \
-	static stm32zero::serial::Serial name; \
+	STM32ZERO_DTCM static stm32zero::uart::RingBuffer name##_rx_buf_; \
+	STM32ZERO_DTCM static stm32zero::uart::DualBuffer name##_tx_buf_; \
+	static stm32zero::uart::Uart name; \
+	static constexpr size_t name##_rx_dma_size_ = rx_dma_size; \
 	static struct name##_init_t_ { \
 		name##_init_t_() { \
 			name##_rx_buf_.init(name##_rx_buf_storage_, rx_size); \
@@ -199,7 +202,14 @@ private:
 		} \
 	} name##_auto_init_
 
-#define INIT_SERIAL(name, huart, dma_size) \
-	name.init(&huart, &name##_rx_buf_, &name##_tx_buf_, name##_rx_dma_.data(), dma_size)
+#define STM32ZERO_DEFINE_UART_4_(n, h, t, r)       STM32ZERO_DEFINE_UART_IMPL_(n, h, t, r, (r) / 4)
+#define STM32ZERO_DEFINE_UART_5_(n, h, t, r, d)    STM32ZERO_DEFINE_UART_IMPL_(n, h, t, r, d)
+#define STM32ZERO_GET_UART_MACRO_(_1, _2, _3, _4, _5, NAME, ...) NAME
 
-#endif // STM32ZERO_SERIAL_HPP
+#define STM32ZERO_DEFINE_UART(...) \
+	STM32ZERO_GET_UART_MACRO_(__VA_ARGS__, STM32ZERO_DEFINE_UART_5_, STM32ZERO_DEFINE_UART_4_)(__VA_ARGS__)
+
+#define STM32ZERO_INIT_UART(name, huart) \
+	name.init(&huart, &name##_rx_buf_, &name##_tx_buf_, name##_rx_dma_.data(), name##_rx_dma_size_)
+
+#endif // STM32ZERO_UART_HPP

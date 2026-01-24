@@ -76,18 +76,18 @@ if (wm > size * 80 / 100) {
 }
 ```
 
-### Serial (`stm32zero-serial.hpp`)
+### UART (`stm32zero-uart.hpp`)
 
 Multi-instance UART support for additional serial ports:
 
 ```cpp
-#include "stm32zero-serial.hpp"
+#include "stm32zero-uart.hpp"
 
-// Define serial instance with buffer sizes
-DEFINE_SERIAL(gps, huart2, 512, 128, 64);
+// Define uart instance with buffer sizes
+STM32ZERO_DEFINE_UART(gps, huart2, 128, 512);
 
 // After MX_USARTx_UART_Init()
-INIT_SERIAL(gps, huart2, 64);
+STM32ZERO_INIT_UART(gps, huart2);
 
 // Use
 gps.write("$PMTK...\r\n", 10);

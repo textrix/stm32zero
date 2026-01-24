@@ -76,18 +76,18 @@ if (wm > size * 80 / 100) {
 }
 ```
 
-### Serial (`stm32zero-serial.hpp`)
+### UART (`stm32zero-uart.hpp`)
 
 추가 시리얼 포트를 위한 다중 인스턴스 UART 지원:
 
 ```cpp
-#include "stm32zero-serial.hpp"
+#include "stm32zero-uart.hpp"
 
-// 버퍼 크기와 함께 시리얼 인스턴스 정의
-DEFINE_SERIAL(gps, huart2, 512, 128, 64);
+// 버퍼 크기와 함께 uart 인스턴스 정의
+STM32ZERO_DEFINE_UART(gps, huart2, 128, 512);
 
 // MX_USARTx_UART_Init() 이후
-INIT_SERIAL(gps, huart2, 64);
+STM32ZERO_INIT_UART(gps, huart2);
 
 // 사용
 gps.write("$PMTK...\r\n", 10);

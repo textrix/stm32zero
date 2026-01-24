@@ -1,13 +1,13 @@
 /**
- * STM32ZERO Serial Module Implementation
+ * STM32ZERO UART Module Implementation
  */
 
 #include "main.h"
-#include "stm32zero-serial.hpp"
+#include "stm32zero-uart.hpp"
 #include <cstring>
 
 namespace stm32zero {
-namespace serial {
+namespace uart {
 
 //=============================================================================
 // RingBuffer Implementation
@@ -243,37 +243,37 @@ bool DualBuffer::start_dma_locked()
 }
 
 //=============================================================================
-// Serial Implementation
+// Uart Implementation
 //=============================================================================
 
-// UART -> Serial mapping table
-static constexpr size_t MAX_SERIAL_INSTANCES = 8;
-static Serial* serial_instances_[MAX_SERIAL_INSTANCES] = {nullptr};
-static UART_HandleTypeDef* uart_handles_[MAX_SERIAL_INSTANCES] = {nullptr};
-static size_t serial_count_ = 0;
+// UART -> Uart mapping table
+static constexpr size_t MAX_UART_INSTANCES = 8;
+static Uart* uart_instances_[MAX_UART_INSTANCES] = {nullptr};
+static UART_HandleTypeDef* uart_handles_[MAX_UART_INSTANCES] = {nullptr};
+static size_t uart_count_ = 0;
 
-static Serial* find_serial(UART_HandleTypeDef* huart)
+static Uart* find_uart(UART_HandleTypeDef* huart)
 {
-	for (size_t i = 0; i < serial_count_; i++) {
+	for (size_t i = 0; i < uart_count_; i++) {
 		if (uart_handles_[i] == huart) {
-			return serial_instances_[i];
+			return uart_instances_[i];
 		}
 	}
 	return nullptr;
 }
 
-static void register_serial(UART_HandleTypeDef* huart, Serial* serial)
+static void register_uart(UART_HandleTypeDef* huart, Uart* uart)
 {
-	if (serial_count_ < MAX_SERIAL_INSTANCES) {
-		uart_handles_[serial_count_] = huart;
-		serial_instances_[serial_count_] = serial;
-		serial_count_++;
+	if (uart_count_ < MAX_UART_INSTANCES) {
+		uart_handles_[uart_count_] = huart;
+		uart_instances_[uart_count_] = uart;
+		uart_count_++;
 	}
 }
 
 static void rx_event_callback_static(UART_HandleTypeDef* huart, uint16_t size)
 {
-	auto* self = find_serial(huart);
+	auto* self = find_uart(huart);
 	if (self) {
 		self->rx_event_isr(size);
 	}
@@ -281,13 +281,13 @@ static void rx_event_callback_static(UART_HandleTypeDef* huart, uint16_t size)
 
 static void tx_complete_callback_static(UART_HandleTypeDef* huart)
 {
-	auto* self = find_serial(huart);
+	auto* self = find_uart(huart);
 	if (self) {
 		self->tx_complete_isr();
 	}
 }
 
-void Serial::init(UART_HandleTypeDef* huart,
+void Uart::init(UART_HandleTypeDef* huart,
 		  RingBuffer* rx_buf,
 		  DualBuffer* tx_buf,
 		  volatile uint8_t* rx_dma,
@@ -307,7 +307,7 @@ void Serial::init(UART_HandleTypeDef* huart,
 #endif
 
 	// Register for callback lookup
-	register_serial(huart, this);
+	register_uart(huart, this);
 
 	HAL_UART_RegisterRxEventCallback(huart_, rx_event_callback_static);
 	HAL_UART_RegisterCallback(huart_, HAL_UART_TX_COMPLETE_CB_ID, tx_complete_callback_static);
@@ -316,13 +316,13 @@ void Serial::init(UART_HandleTypeDef* huart,
 	HAL_UARTEx_ReceiveToIdle_DMA(huart_, const_cast<uint8_t*>(rx_dma_), rx_dma_size_);
 }
 
-void Serial::tx_start_callback(void* ctx, const uint8_t* data, uint16_t len)
+void Uart::tx_start_callback(void* ctx, const uint8_t* data, uint16_t len)
 {
-	auto* self = static_cast<Serial*>(ctx);
+	auto* self = static_cast<Uart*>(ctx);
 	HAL_UART_Transmit_DMA(self->huart_, const_cast<uint8_t*>(data), len);
 }
 
-void Serial::rx_event_isr(uint16_t size)
+void Uart::rx_event_isr(uint16_t size)
 {
 	rx_buf_->push(const_cast<uint8_t*>(rx_dma_), size);
 
@@ -333,12 +333,12 @@ void Serial::rx_event_isr(uint16_t size)
 	HAL_UARTEx_ReceiveToIdle_DMA(huart_, const_cast<uint8_t*>(rx_dma_), rx_dma_size_);
 }
 
-void Serial::tx_complete_isr()
+void Uart::tx_complete_isr()
 {
 	tx_buf_->tx_complete_isr();
 }
 
-int Serial::write(const void* data, size_t len)
+int Uart::write(const void* data, size_t len)
 {
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 	freertos::MutexLock lock(tx_mutex_);
@@ -346,12 +346,12 @@ int Serial::write(const void* data, size_t len)
 	return tx_buf_->write(data, len);
 }
 
-int Serial::read(void* data, size_t len)
+int Uart::read(void* data, size_t len)
 {
 	return static_cast<int>(rx_buf_->pop(static_cast<uint8_t*>(data), len));
 }
 
-int Serial::read(void* data, size_t len, uint32_t timeout_ms)
+int Uart::read(void* data, size_t len, uint32_t timeout_ms)
 {
 	if (data == nullptr || len == 0) {
 		return -1;
@@ -370,7 +370,7 @@ int Serial::read(void* data, size_t len, uint32_t timeout_ms)
 	return static_cast<int>(received);
 }
 
-bool Serial::wait(uint32_t timeout_ms)
+bool Uart::wait(uint32_t timeout_ms)
 {
 	if (!rx_buf_->is_empty()) {
 		return true;
@@ -383,7 +383,7 @@ bool Serial::wait(uint32_t timeout_ms)
 #endif
 }
 
-int Serial::readln(char* buf, size_t len, uint32_t timeout_ms)
+int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 {
 	if (buf == nullptr || len == 0) {
 		return -1;
@@ -423,40 +423,40 @@ int Serial::readln(char* buf, size_t len, uint32_t timeout_ms)
 	return static_cast<int>(pos);
 }
 
-bool Serial::flush()
+bool Uart::flush()
 {
 	return tx_buf_->flush();
 }
 
-size_t Serial::available()
+size_t Uart::available()
 {
 	return rx_buf_->available();
 }
 
-bool Serial::is_empty()
+bool Uart::is_empty()
 {
 	return rx_buf_->is_empty();
 }
 
-bool Serial::is_tx_busy()
+bool Uart::is_tx_busy()
 {
 	return tx_buf_->is_busy();
 }
 
-uint16_t Serial::pending()
+uint16_t Uart::pending()
 {
 	return tx_buf_->pending();
 }
 
-uint16_t Serial::rx_water_mark()
+uint16_t Uart::rx_water_mark()
 {
 	return rx_buf_->water_mark();
 }
 
-uint16_t Serial::tx_water_mark()
+uint16_t Uart::tx_water_mark()
 {
 	return tx_buf_->water_mark();
 }
 
-} // namespace serial
+} // namespace uart
 } // namespace stm32zero
