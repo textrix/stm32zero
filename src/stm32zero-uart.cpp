@@ -391,32 +391,36 @@ int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 
 	size_t pos = 0;
 	size_t max_chars = len - 1;
+	bool got_data = false;
 
 	while (pos < max_chars) {
 		if (!wait(timeout_ms)) {
-			if (pos == 0) {
+			if (!got_data) {
 				buf[0] = '\0';
 				return -1;
 			}
 			break;
 		}
 
-		bool found = false;
-		size_t n = rx_buf_->pop_until(
-			reinterpret_cast<uint8_t*>(buf + pos),
-			max_chars - pos,
-			'\n',
-			&found
-		);
+		// Read one byte at a time
+		uint8_t ch;
+		size_t n = rx_buf_->pop(&ch, 1);
+		if (n == 0) {
+			continue;
+		}
 
-		pos += n;
+		// Skip leading CR/LF (from previous line)
+		if (!got_data && (ch == '\r' || ch == '\n')) {
+			continue;
+		}
 
-		if (found) {
-			while (pos > 0 && (buf[pos - 1] == '\n' || buf[pos - 1] == '\r')) {
-				pos--;
-			}
+		// Check for line ending (CR or LF)
+		if (ch == '\r' || ch == '\n') {
 			break;
 		}
+
+		got_data = true;
+		buf[pos++] = ch;
 	}
 
 	buf[pos] = '\0';
