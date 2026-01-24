@@ -96,8 +96,9 @@ gps.readln(buf, sizeof(buf), 1000);
 
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
 
-48-bit lock-free microsecond counter using 3 cascaded 16-bit timers:
+48-bit lock-free microsecond counter using cascaded timers:
 
+- Supports 2-timer (32+16 or 16+32) and 3-timer (16+16+16) modes
 - Lock-free reads (safe from any context)
 - Inline implementation (zero call overhead)
 - Range: ~8.9 years before overflow
@@ -109,7 +110,7 @@ stm32zero::ustim::init();
 
 uint64_t start = stm32zero::ustim::get();
 // ... do work ...
-uint64_t elapsed_us = stm32zero::ustim::get() - start;
+uint64_t elapsed_us = stm32zero::ustim::elapsed(start);
 ```
 
 ### FreeRTOS (`stm32zero-freertos.hpp`)
@@ -183,10 +184,14 @@ Create `stm32zero-conf.h` in your include path (optional):
 #define STM32ZERO_SIO_TX_SIZE   4096
 #define STM32ZERO_SIO_DMA_SIZE  64
 
-// Microsecond timer instances
-#define STM32ZERO_USTIM_L       TIM3
-#define STM32ZERO_USTIM_M       TIM4
-#define STM32ZERO_USTIM_H       TIM12
+// Microsecond timer (timer numbers, not handles)
+// 2-timer mode (32+16 or 16+32):
+#define STM32ZERO_USTIM_LOW     5
+#define STM32ZERO_USTIM_HIGH    8
+// Or 3-timer mode (16+16+16):
+#define STM32ZERO_USTIM_LOW     3
+#define STM32ZERO_USTIM_MID     4
+#define STM32ZERO_USTIM_HIGH    12
 
 // FreeRTOS support
 #define STM32ZERO_RTOS_FREERTOS 1

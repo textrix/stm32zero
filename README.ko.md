@@ -96,8 +96,9 @@ gps.readln(buf, sizeof(buf), 1000);
 
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
 
-3개의 16비트 타이머를 캐스케이드 연결한 48비트 lock-free 마이크로초 카운터:
+캐스케이드 연결된 타이머를 사용한 48비트 lock-free 마이크로초 카운터:
 
+- 2-timer (32+16 또는 16+32) 및 3-timer (16+16+16) 모드 지원
 - Lock-free 읽기 (모든 컨텍스트에서 안전)
 - 인라인 구현 (함수 호출 오버헤드 제로)
 - 범위: 오버플로우까지 약 8.9년
@@ -109,7 +110,7 @@ stm32zero::ustim::init();
 
 uint64_t start = stm32zero::ustim::get();
 // ... 작업 수행 ...
-uint64_t elapsed_us = stm32zero::ustim::get() - start;
+uint64_t elapsed_us = stm32zero::ustim::elapsed(start);
 ```
 
 ### FreeRTOS (`stm32zero-freertos.hpp`)
@@ -183,10 +184,14 @@ Include 경로: `STM32ZERO/include`
 #define STM32ZERO_SIO_TX_SIZE   4096
 #define STM32ZERO_SIO_DMA_SIZE  64
 
-// 마이크로초 타이머 인스턴스
-#define STM32ZERO_USTIM_L       TIM3
-#define STM32ZERO_USTIM_M       TIM4
-#define STM32ZERO_USTIM_H       TIM12
+// 마이크로초 타이머 (타이머 번호, 핸들이 아님)
+// 2-timer 모드 (32+16 또는 16+32):
+#define STM32ZERO_USTIM_LOW     5
+#define STM32ZERO_USTIM_HIGH    8
+// 또는 3-timer 모드 (16+16+16):
+#define STM32ZERO_USTIM_LOW     3
+#define STM32ZERO_USTIM_MID     4
+#define STM32ZERO_USTIM_HIGH    12
 
 // FreeRTOS 지원
 #define STM32ZERO_RTOS_FREERTOS 1
