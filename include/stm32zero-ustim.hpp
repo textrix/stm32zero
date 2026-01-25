@@ -46,6 +46,7 @@
 
 #include "main.h"
 #include "stm32zero-tim.hpp"
+#include "stm32zero.hpp"  // for CriticalSection
 #include <cstdint>
 #include <cassert>
 
@@ -114,6 +115,18 @@ public:
 		constexpr uint64_t mask = (1ULL << 48) - 1;
 		return (get() - start) & mask;
 	}
+
+	__STATIC_FORCEINLINE void spin(uint32_t us)
+	{
+		uint64_t start = get();
+		while (elapsed(start) < us) {}
+	}
+
+	__STATIC_FORCEINLINE void delay_us(uint32_t us)
+	{
+		CriticalSection cs;
+		spin(us);
+	}
 };
 
 //=============================================================================
@@ -164,6 +177,18 @@ public:
 	{
 		constexpr uint64_t mask = (1ULL << 48) - 1;
 		return (get() - start) & mask;
+	}
+
+	__STATIC_FORCEINLINE void spin(uint32_t us)
+	{
+		uint64_t start = get();
+		while (elapsed(start) < us) {}
+	}
+
+	__STATIC_FORCEINLINE void delay_us(uint32_t us)
+	{
+		CriticalSection cs;
+		spin(us);
 	}
 };
 
