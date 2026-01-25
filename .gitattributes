@@ -1,0 +1,9 @@
+# Force LF line endings for all text files
+* text=auto eol=lf
+
+# Explicitly mark binary files
+*.bin binary
+*.elf binary
+*.hex binary
+*.o binary
+*.a binary
