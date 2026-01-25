@@ -9,6 +9,7 @@
  *   - Supports 2-timer (32+16 or 16+32) and 3-timer (16+16+16) modes
  *   - Lock-free read (safe from any context including ISR)
  *   - Inline implementation for zero function call overhead
+ *   - Direct register access (TIM->CNT) - no HAL dependency at runtime
  *   - Range: ~8.9 years before overflow
  *
  * Hardware setup (STM32CubeMX):

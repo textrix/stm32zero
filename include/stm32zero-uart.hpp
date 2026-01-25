@@ -10,6 +10,7 @@
  * Features:
  *   - Multiple UART instances with independent buffers
  *   - DMA-based TX (dual buffer) and RX (ring buffer + idle detection)
+ *   - Uses HAL handles for DMA/callback management
  *   - Thread-safe with mutex protection
  *   - Blocking readln with timeout
  *   - write()/read() based I/O (no printf, no newlib)
