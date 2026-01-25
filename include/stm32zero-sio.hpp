@@ -38,6 +38,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdarg>
+#include <cstdio>
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 #include "semphr.h"
@@ -68,6 +70,39 @@ void init();
  * @return Number of bytes actually written
  */
 int write(const void* data, size_t len);
+
+/**
+ * Formatted write (snprintf + write)
+ *
+ * ISR-safe. If buffer is full, data is truncated.
+ *
+ * @param buf Caller-provided buffer for formatting
+ * @param size Buffer size
+ * @param fmt printf format string
+ * @param args va_list arguments
+ * @return snprintf return value (>= size means truncated)
+ */
+int vwritef(char* buf, size_t size, const char* fmt, va_list args);
+
+/**
+ * Formatted write (snprintf + write)
+ *
+ * ISR-safe. If buffer is full, data is truncated.
+ *
+ * @param buf Caller-provided buffer for formatting
+ * @param fmt printf format string
+ * @param ... format arguments
+ * @return snprintf return value (>= N means truncated)
+ */
+template<size_t N>
+inline int writef(char (&buf)[N], const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int len = vwritef(buf, N, fmt, args);
+	va_end(args);
+	return len;
+}
 
 /**
  * Flush pending TX data

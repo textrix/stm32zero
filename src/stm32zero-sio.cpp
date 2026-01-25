@@ -68,6 +68,11 @@ int write(const void* data, size_t len)
 	return sio_uart_.write(data, len);
 }
 
+int vwritef(char* buf, size_t size, const char* fmt, va_list args)
+{
+	return sio_uart_.vwritef(buf, size, fmt, args);
+}
+
 bool flush()
 {
 	return sio_uart_.flush();

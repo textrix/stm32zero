@@ -29,6 +29,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdarg>
+#include <cstdio>
 
 #include "stm32zero.hpp"
 
@@ -136,6 +138,18 @@ public:
 	uint16_t pending();
 	uint16_t rx_water_mark();
 	uint16_t tx_water_mark();
+
+	int vwritef(char* buf, size_t size, const char* fmt, va_list args);
+
+	template<size_t N>
+	int writef(char (&buf)[N], const char* fmt, ...)
+	{
+		va_list args;
+		va_start(args, fmt);
+		int len = vwritef(buf, N, fmt, args);
+		va_end(args);
+		return len;
+	}
 
 	UART_HandleTypeDef* handle() const { return huart_; }
 

@@ -346,6 +346,17 @@ int Uart::write(const void* data, size_t len)
 	return tx_buf_->write(data, len);
 }
 
+int Uart::vwritef(char* buf, size_t size, const char* fmt, va_list args)
+{
+	int len = vsnprintf(buf, size, fmt, args);
+	if (len > 0) {
+		size_t n = (static_cast<size_t>(len) < size)
+			 ? static_cast<size_t>(len) : size - 1;
+		write(buf, n);
+	}
+	return len;
+}
+
 int Uart::read(void* data, size_t len)
 {
 	return static_cast<int>(rx_buf_->pop(static_cast<uint8_t*>(data), len));
