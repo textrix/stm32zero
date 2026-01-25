@@ -50,8 +50,12 @@ stm32zero::sio::init();
 // Write (works from anywhere - task or ISR)
 sio::write("Hello\r\n", 7);
 
-// Read with timeout
+// Formatted write (caller provides buffer)
 char buf[128];
+sio::writef(buf, "Value: %d\r\n", 42);           // array reference (size auto-deduced)
+sio::writef(buf, sizeof(buf), "Value: %d\r\n", 42);  // pointer + explicit size
+
+// Read with timeout
 int n = sio::readln(buf, sizeof(buf), 1000);
 ```
 

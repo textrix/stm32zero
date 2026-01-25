@@ -104,6 +104,8 @@ inline int writef(char (&buf)[N], const char* fmt, ...)
 	return len;
 }
 
+int writef(char* buf, size_t size, const char* fmt, ...);
+
 /**
  * Flush pending TX data
  *

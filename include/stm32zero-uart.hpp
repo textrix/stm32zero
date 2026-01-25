@@ -151,6 +151,8 @@ public:
 		return len;
 	}
 
+	int writef(char* buf, size_t size, const char* fmt, ...);
+
 	UART_HandleTypeDef* handle() const { return huart_; }
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)

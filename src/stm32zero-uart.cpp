@@ -357,6 +357,15 @@ int Uart::vwritef(char* buf, size_t size, const char* fmt, va_list args)
 	return len;
 }
 
+int Uart::writef(char* buf, size_t size, const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int len = vwritef(buf, size, fmt, args);
+	va_end(args);
+	return len;
+}
+
 int Uart::read(void* data, size_t len)
 {
 	return static_cast<int>(rx_buf_->pop(static_cast<uint8_t*>(data), len));

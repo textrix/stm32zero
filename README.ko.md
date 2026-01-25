@@ -50,8 +50,12 @@ stm32zero::sio::init();
 // 쓰기 (어디서든 동작 - task 또는 ISR)
 sio::write("Hello\r\n", 7);
 
-// 타임아웃 있는 읽기
+// 포맷 출력 (호출자가 버퍼 제공)
 char buf[128];
+sio::writef(buf, "Value: %d\r\n", 42);           // 배열 참조 (크기 자동 추론)
+sio::writef(buf, sizeof(buf), "Value: %d\r\n", 42);  // 포인터 + 명시적 크기
+
+// 타임아웃 있는 읽기
 int n = sio::readln(buf, sizeof(buf), 1000);
 ```
 
