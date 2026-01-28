@@ -161,6 +161,60 @@ sem.take(pdMS_TO_TICKS(1000));  // wait with timeout
 sem.give_from_isr();            // signal from ISR
 ```
 
+### FDCAN (`stm32zero-fdcan.hpp`)
+
+CAN-FD support with static allocation:
+
+```cpp
+#include "stm32zero-fdcan.hpp"
+
+STM32ZERO_DEFINE_FDCAN(can1, hfdcan1, 16);
+
+// After MX_FDCAN1_Init()
+STM32ZERO_INIT_FDCAN(can1, hfdcan1);
+
+can1.open(0x100, fdcan::FrameFormat::FD_BRS, fdcan::IdType::STANDARD,
+          fdcan::Bitrate::K500, fdcan::Bitrate::M2);
+
+// Send/Receive
+can1.send(0x180, data, 8, 1000);
+fdcan::RxMessage msg;
+can1.recv(&msg, 1000);
+```
+
+**Hardware Note:**
+
+CAN transceiver's STBY (standby) pin must be set **LOW** for the transceiver to be active. If STBY pin is floating or HIGH, the transceiver enters standby mode and CAN communication will fail with protocol errors (PEA/ARA in IR register).
+
+**Low-Power Wake-up (Remote Wake via RXD):**
+
+Transceivers like MCP2561/2FD can detect bus activity and wake up the MCU even in standby mode:
+
+1. Set STBY=HIGH to put transceiver in Standby mode
+2. Bus activity causes falling edge on RXD pin
+3. MCU detects via EXTI interrupt
+4. Set STBY=LOW to activate transceiver, then resume normal communication
+
+```cpp
+// Example: Configure RXD pin (PD0) as EXTI input for wake-up
+GPIO_InitTypeDef GPIO_InitStruct = {0};
+GPIO_InitStruct.Pin = GPIO_PIN_0;
+GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+GPIO_InitStruct.Pull = GPIO_NOPULL;
+HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+// In EXTI callback: wake up and activate transceiver
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == GPIO_PIN_0) {
+        HAL_GPIO_WritePin(STBY_GPIO_Port, STBY_Pin, GPIO_PIN_RESET);  // Activate
+    }
+}
+```
+
 ## Requirements
 
 - C++17 or later

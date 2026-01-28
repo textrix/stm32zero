@@ -161,6 +161,60 @@ sem.take(pdMS_TO_TICKS(1000));  // 타임아웃과 함께 대기
 sem.give_from_isr();            // ISR에서 시그널
 ```
 
+### FDCAN (`stm32zero-fdcan.hpp`)
+
+정적 할당 기반 CAN-FD 지원:
+
+```cpp
+#include "stm32zero-fdcan.hpp"
+
+STM32ZERO_DEFINE_FDCAN(can1, hfdcan1, 16);
+
+// MX_FDCAN1_Init() 이후
+STM32ZERO_INIT_FDCAN(can1, hfdcan1);
+
+can1.open(0x100, fdcan::FrameFormat::FD_BRS, fdcan::IdType::STANDARD,
+          fdcan::Bitrate::K500, fdcan::Bitrate::M2);
+
+// 송수신
+can1.send(0x180, data, 8, 1000);
+fdcan::RxMessage msg;
+can1.recv(&msg, 1000);
+```
+
+**하드웨어 주의사항:**
+
+CAN 트랜시버의 STBY(standby) 핀은 반드시 **LOW**로 설정해야 트랜시버가 활성화됩니다. STBY 핀이 플로팅 상태이거나 HIGH이면 트랜시버가 대기 모드로 진입하여 CAN 통신이 실패합니다 (IR 레지스터에 PEA/ARA 프로토콜 에러 발생).
+
+**저전력 웨이크업 (Remote Wake via RXD):**
+
+MCP2561/2FD 같은 트랜시버는 STBY 모드에서도 버스 활동을 감지하여 MCU를 깨울 수 있습니다:
+
+1. STBY=HIGH로 트랜시버를 Standby 모드로 설정
+2. 버스 활동 시 RXD 핀에 falling edge 발생
+3. MCU가 EXTI 인터럽트로 감지
+4. STBY=LOW로 트랜시버 활성화 후 정상 통신 재개
+
+```cpp
+// 예시: RXD 핀 (PD0)을 웨이크업용 EXTI 입력으로 설정
+GPIO_InitTypeDef GPIO_InitStruct = {0};
+GPIO_InitStruct.Pin = GPIO_PIN_0;
+GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+GPIO_InitStruct.Pull = GPIO_NOPULL;
+HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+// EXTI 콜백에서: 웨이크업 후 트랜시버 활성화
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == GPIO_PIN_0) {
+        HAL_GPIO_WritePin(STBY_GPIO_Port, STBY_Pin, GPIO_PIN_RESET);  // 활성화
+    }
+}
+```
+
 ## 요구사항
 
 - C++17 이상
