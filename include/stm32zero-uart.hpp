@@ -1,5 +1,5 @@
-#ifndef STM32ZERO_UART_HPP
-#define STM32ZERO_UART_HPP
+#ifndef __STM32ZERO_UART_HPP__
+#define __STM32ZERO_UART_HPP__
 
 /**
  * STM32ZERO UART Module - Multi-UART support with DMA
@@ -229,4 +229,4 @@ private:
 #define STM32ZERO_INIT_UART(name, huart) \
 	name.init(&huart, &name##_rx_buf_, &name##_tx_buf_, name##_rx_dma_.data(), name##_rx_dma_size_)
 
-#endif // STM32ZERO_UART_HPP
+#endif // __STM32ZERO_UART_HPP__

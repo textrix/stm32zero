@@ -287,11 +287,7 @@ static void tx_complete_callback_static(UART_HandleTypeDef* huart)
 	}
 }
 
-void Uart::init(UART_HandleTypeDef* huart,
-		  RingBuffer* rx_buf,
-		  DualBuffer* tx_buf,
-		  volatile uint8_t* rx_dma,
-		  size_t rx_dma_size)
+void Uart::init(UART_HandleTypeDef* huart, RingBuffer* rx_buf, DualBuffer* tx_buf, volatile uint8_t* rx_dma, size_t rx_dma_size)
 {
 	huart_ = huart;
 	rx_buf_ = rx_buf;
@@ -350,8 +346,7 @@ int Uart::vwritef(char* buf, size_t size, const char* fmt, va_list args)
 {
 	int len = vsnprintf(buf, size, fmt, args);
 	if (len > 0) {
-		size_t n = (static_cast<size_t>(len) < size)
-			 ? static_cast<size_t>(len) : size - 1;
+		size_t n = (static_cast<size_t>(len) < size) ? static_cast<size_t>(len) : size - 1;
 		write(buf, n);
 	}
 	return len;

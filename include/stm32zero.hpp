@@ -1,8 +1,27 @@
-#ifndef STM32ZERO_HPP
-#define STM32ZERO_HPP
+#ifndef __STM32ZERO_HPP__
+#define __STM32ZERO_HPP__
 
 #include <cstdint>
 #include <cstddef>
+
+//=============================================================================
+// Section attributes (multi-compiler support)
+//=============================================================================
+
+// Section placement - not provided by CMSIS
+#if defined(__ICCARM__)
+  // IAR Compiler
+  #if (__VER__ >= 8000000)
+    // IAR v8+ supports __attribute__
+    #define STM32ZERO_SECTION(s)  __attribute__((section(s)))
+  #else
+    // IAR v7 and earlier: use @ operator
+    #define STM32ZERO_SECTION(s)  @ s
+  #endif
+#else
+  // GCC, ARM Compiler 5, ARM Compiler 6 (armclang)
+  #define STM32ZERO_SECTION(s)  __attribute__((section(s)))
+#endif
 
 //=============================================================================
 // Configuration
@@ -10,6 +29,34 @@
 
 #if __has_include("stm32zero-conf.h")
 #include "stm32zero-conf.h"
+#endif
+
+//=============================================================================
+// Default section macros (can be overridden in stm32zero-conf.h)
+//=============================================================================
+
+#ifndef STM32ZERO_ITCM
+#define STM32ZERO_ITCM        STM32ZERO_SECTION(".itcmram")
+#endif
+
+#ifndef STM32ZERO_DTCM
+#define STM32ZERO_DTCM        STM32ZERO_SECTION(".dtcmram")
+#endif
+
+#ifndef STM32ZERO_DTCM_DATA
+#define STM32ZERO_DTCM_DATA   STM32ZERO_SECTION(".dtcmram_data")
+#endif
+
+#ifndef STM32ZERO_DMA
+#define STM32ZERO_DMA         STM32ZERO_SECTION(".dma")
+#endif
+
+#ifndef STM32ZERO_DMA_TX
+#define STM32ZERO_DMA_TX      STM32ZERO_SECTION(".dma_tx")
+#endif
+
+#ifndef STM32ZERO_DMA_RX
+#define STM32ZERO_DMA_RX      STM32ZERO_SECTION(".dma_rx")
 #endif
 
 //=============================================================================
@@ -129,18 +176,16 @@ constexpr T align_up(T value, size_t alignment) noexcept
 /**
  * D-Cache line size in bytes
  *
- * Priority:
- *   1. STM32ZERO_CACHE_LINE_SIZE (user defined in stm32zero-conf.h)
- *   2. __SCB_DCACHE_LINE_SIZE (CMSIS provided)
- *   3. 0 (no cache)
+ * Auto-detected from CMSIS __SCB_DCACHE_LINE_SIZE.
+ * 0 if cache is not available.
  */
-#if defined(STM32ZERO_CACHE_LINE_SIZE)
-constexpr size_t cache_line_size = STM32ZERO_CACHE_LINE_SIZE;
-#elif defined(__SCB_DCACHE_LINE_SIZE)
-constexpr size_t cache_line_size = __SCB_DCACHE_LINE_SIZE;
+#ifdef __SCB_DCACHE_LINE_SIZE
+#define STM32ZERO_CACHE_LINE_SIZE __SCB_DCACHE_LINE_SIZE
 #else
-constexpr size_t cache_line_size = 0;
+#define STM32ZERO_CACHE_LINE_SIZE 0
 #endif
+
+constexpr size_t cache_line_size = STM32ZERO_CACHE_LINE_SIZE;
 
 static_assert(cache_line_size == 0 || is_power_of_2(cache_line_size),
 	"cache_line_size must be 0 or power of 2");
@@ -171,49 +216,6 @@ constexpr T cache_align(T value) noexcept
 		return align_up<cache_line_size>(value);
 	}
 }
-
-//=============================================================================
-// Section attributes (multi-compiler support)
-//=============================================================================
-
-// Section placement - not provided by CMSIS
-#if defined(__ICCARM__)
-  // IAR Compiler
-  #if (__VER__ >= 8000000)
-    // IAR v8+ supports __attribute__
-    #define STM32ZERO_SECTION(s)  __attribute__((section(s)))
-  #else
-    // IAR v7 and earlier: use @ operator
-    #define STM32ZERO_SECTION(s)  @ s
-  #endif
-#else
-  // GCC, ARM Compiler 5, ARM Compiler 6 (armclang)
-  #define STM32ZERO_SECTION(s)  __attribute__((section(s)))
-#endif
-
-#ifndef STM32ZERO_ITCM
-#define STM32ZERO_ITCM        STM32ZERO_SECTION(".itcmram")
-#endif
-
-#ifndef STM32ZERO_DTCM
-#define STM32ZERO_DTCM        STM32ZERO_SECTION(".dtcmram")
-#endif
-
-#ifndef STM32ZERO_DTCM_DATA
-#define STM32ZERO_DTCM_DATA   STM32ZERO_SECTION(".dtcmram_data")
-#endif
-
-#ifndef STM32ZERO_DMA
-#define STM32ZERO_DMA         STM32ZERO_SECTION(".dma")
-#endif
-
-#ifndef STM32ZERO_DMA_TX
-#define STM32ZERO_DMA_TX      STM32ZERO_SECTION(".dma_tx")
-#endif
-
-#ifndef STM32ZERO_DMA_RX
-#define STM32ZERO_DMA_RX      STM32ZERO_SECTION(".dma_rx")
-#endif
 
 //=============================================================================
 // DMA Buffer
@@ -402,4 +404,12 @@ bool wait_until(Predicate cond, uint32_t timeout_ms)
 
 } // namespace stm32zero
 
-#endif // STM32ZERO_HPP
+//=============================================================================
+// Namespace alias (optional)
+//=============================================================================
+
+#ifdef STM32ZERO_NAMESPACE_ALIAS
+namespace STM32ZERO_NAMESPACE_ALIAS = stm32zero;
+#endif
+
+#endif // __STM32ZERO_HPP__

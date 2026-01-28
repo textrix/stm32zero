@@ -200,9 +200,11 @@ Create `stm32zero-conf.h` in your include path (optional):
 // FreeRTOS support
 #define STM32ZERO_RTOS_FREERTOS 1
 
-// Cache line size override (auto-detected if not defined)
-#define STM32ZERO_CACHE_LINE_SIZE 32
+// Namespace alias (optional)
+#define STM32ZERO_NAMESPACE_ALIAS zero
 ```
+
+With namespace alias, you can use `zero::sio::write()` instead of `stm32zero::sio::write()`.
 
 ## Code Style
 

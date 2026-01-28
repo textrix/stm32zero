@@ -1,5 +1,5 @@
-#ifndef STM32ZERO_SIO_HPP
-#define STM32ZERO_SIO_HPP
+#ifndef __STM32ZERO_SIO_HPP__
+#define __STM32ZERO_SIO_HPP__
 
 /**
  * STM32ZERO Serial I/O Module - Default UART for debug/console
@@ -205,4 +205,4 @@ SemaphoreHandle_t semaphore();
 } // namespace sio
 } // namespace stm32zero
 
-#endif // STM32ZERO_SIO_HPP
+#endif // __STM32ZERO_SIO_HPP__

@@ -9,25 +9,8 @@
  *   2. STM32ZERO/include directory
  */
 
-#ifndef STM32ZERO_CONF_H
-#define STM32ZERO_CONF_H
-
-//=============================================================================
-// Cache Configuration
-//=============================================================================
-
-/**
- * D-Cache line size in bytes
- *
- * If not defined, falls back to __SCB_DCACHE_LINE_SIZE (CMSIS),
- * or 0 if cache is not available.
- *
- * Common values:
- *   STM32H7: 32
- *   STM32F7: 32
- *   STM32F4: 0 (no cache)
- */
-// #define STM32ZERO_CACHE_LINE_SIZE  32
+#ifndef __STM32ZERO_CONF_H__
+#define __STM32ZERO_CONF_H__
 
 //=============================================================================
 // Memory Section Attributes
@@ -35,7 +18,7 @@
 
 /**
  * Override default section names if needed.
- * Default values are used if not defined.
+ * STM32ZERO_SECTION() macro is available for use here.
  *
  * Defaults:
  *   STM32ZERO_ITCM      -> .itcmram
@@ -45,12 +28,12 @@
  *   STM32ZERO_DMA_TX    -> .dma_tx
  *   STM32ZERO_DMA_RX    -> .dma_rx
  */
-// #define STM32ZERO_ITCM       __attribute__((section(".itcmram")))
-// #define STM32ZERO_DTCM       __attribute__((section(".dtcmram")))
-// #define STM32ZERO_DTCM_DATA  __attribute__((section(".dtcmram_data")))
-// #define STM32ZERO_DMA        __attribute__((section(".sram4")))
-// #define STM32ZERO_DMA_TX     __attribute__((section(".sram4_tx")))
-// #define STM32ZERO_DMA_RX     __attribute__((section(".sram4_rx")))
+// #define STM32ZERO_ITCM       STM32ZERO_SECTION(".itcmram")
+// #define STM32ZERO_DTCM       STM32ZERO_SECTION(".dtcmram")
+// #define STM32ZERO_DTCM_DATA  STM32ZERO_SECTION(".dtcmram_data")
+// #define STM32ZERO_DMA        STM32ZERO_SECTION(".sram4")
+// #define STM32ZERO_DMA_TX     STM32ZERO_SECTION(".sram4_tx")
+// #define STM32ZERO_DMA_RX     STM32ZERO_SECTION(".sram4_rx")
 
 //=============================================================================
 // Serial I/O Configuration (sio module)
@@ -124,4 +107,21 @@
 // #define STM32ZERO_RTOS_FREERTOS  1
 // #define STM32ZERO_RTOS_THREADX   1
 
-#endif // STM32ZERO_CONF_H
+//=============================================================================
+// Namespace Alias
+//=============================================================================
+
+/**
+ * Short namespace alias for convenience.
+ * If defined, allows using the alias instead of 'stm32zero'.
+ *
+ * Example:
+ *   #define STM32ZERO_NAMESPACE_ALIAS zero
+ *
+ *   // Then use:
+ *   zero::sio::write("Hello", 5);
+ *   zero::ustim::get();
+ */
+// #define STM32ZERO_NAMESPACE_ALIAS zero
+
+#endif // __STM32ZERO_CONF_H__

@@ -200,9 +200,11 @@ Include 경로: `STM32ZERO/include`
 // FreeRTOS 지원
 #define STM32ZERO_RTOS_FREERTOS 1
 
-// 캐시 라인 크기 오버라이드 (미정의시 자동 감지)
-#define STM32ZERO_CACHE_LINE_SIZE 32
+// 네임스페이스 별칭 (선택사항)
+#define STM32ZERO_NAMESPACE_ALIAS zero
 ```
+
+네임스페이스 별칭 설정 시 `stm32zero::sio::write()` 대신 `zero::sio::write()`로 사용 가능.
 
 ## 코드 스타일
 

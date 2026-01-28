@@ -1,5 +1,5 @@
-#ifndef STM32ZERO_USTIM_HPP
-#define STM32ZERO_USTIM_HPP
+#ifndef __STM32ZERO_USTIM_HPP__
+#define __STM32ZERO_USTIM_HPP__
 
 /**
  * STM32ZERO Microsecond Timer - 48-bit lock-free counter
@@ -209,4 +209,4 @@ using ustim = Ustim<TIM<STM32ZERO_USTIM_LOW>, TIM<STM32ZERO_USTIM_HIGH>>;
 
 } // namespace stm32zero
 
-#endif // STM32ZERO_USTIM_HPP
+#endif // __STM32ZERO_USTIM_HPP__
