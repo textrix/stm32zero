@@ -216,6 +216,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 ```
 
+**STM32 Low-Power Mode Considerations:**
+
+- **Stop mode**: Any GPIO can wake via EXTI. Clear pending interrupts before entering (`NVIC->ICPR[n]`), suspend SysTick (`HAL_SuspendTick()`). PRIMASK (`__disable_irq()`) blocks handler execution but EXTI still wakes WFI.
+- **Standby mode**: Only dedicated WKUP pins can wake (e.g., PA0=WKUP1, PA2=WKUP2 on STM32H7). Route RXD to WKUP pin if needed.
+
 ## Requirements
 
 - C++17 or later

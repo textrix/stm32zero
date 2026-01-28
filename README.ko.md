@@ -216,6 +216,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 ```
 
+**STM32 저전력 모드 고려사항:**
+
+- **Stop 모드**: 모든 GPIO를 EXTI로 웨이크업 가능. 진입 전 pending 인터럽트 클리어 필요 (`NVIC->ICPR[n]`), SysTick 정지 (`HAL_SuspendTick()`). PRIMASK (`__disable_irq()`)는 핸들러 실행만 막고 EXTI는 WFI를 깨움.
+- **Standby 모드**: 전용 WKUP 핀만 웨이크업 가능 (STM32H7: PA0=WKUP1, PA2=WKUP2 등). 필요시 RXD를 WKUP 핀에 연결.
+
 ## 요구사항
 
 - C++17 이상
