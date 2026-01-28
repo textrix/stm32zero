@@ -188,12 +188,13 @@ CAN transceiver's STBY (standby) pin must be set **LOW** for the transceiver to 
 
 **Low-Power Wake-up (Remote Wake via RXD):**
 
-Transceivers like MCP2561/2FD can detect bus activity and wake up the MCU even in standby mode:
+Transceivers like MCP2561/2FD support low-power standby mode with bus activity monitoring:
 
-1. Set STBY=HIGH to put transceiver in Standby mode
-2. Bus activity causes falling edge on RXD pin
-3. MCU detects via EXTI interrupt
-4. Set STBY=LOW to activate transceiver, then resume normal communication
+- In Standby mode (STBY=HIGH), transmitter and high-speed receiver are disabled to minimize power consumption
+- Low-power receiver and wake-up filter remain active to monitor the bus
+- RXD shows a **delayed** representation of the CAN bus (due to wake-up filter)
+- Dominant state on CAN bus causes **negative edge** on RXD pin, interrupting the MCU
+- MCU must set STBY=LOW to return to Normal mode for high-speed communication
 
 ```cpp
 // Example: Configure RXD pin (PD0) as EXTI input for wake-up
