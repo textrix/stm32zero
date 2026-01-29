@@ -142,9 +142,9 @@ uint16_t read_peak()
 }
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-SemaphoreHandle_t semaphore()
+QueueSetMemberHandle_t read_syncobj()
 {
-	return sio_uart_.semaphore();
+	return sio_uart_.read_syncobj();
 }
 #endif
 

@@ -207,9 +207,9 @@ uint16_t read_peak();
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 /**
- * Get RX semaphore handle (for QueueSet, etc.)
+ * Get RX synchronization object for QueueSet
  */
-SemaphoreHandle_t semaphore();
+QueueSetMemberHandle_t read_syncobj();
 #endif
 
 } // namespace sio

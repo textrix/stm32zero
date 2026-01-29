@@ -166,7 +166,10 @@ public:
 	UART_HandleTypeDef* handle() const { return huart_; }
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-	SemaphoreHandle_t semaphore() { return rx_sem_.handle(); }
+	/**
+	 * Get RX synchronization object for QueueSet
+	 */
+	QueueSetMemberHandle_t read_syncobj() { return rx_sem_.handle(); }
 #endif
 
 	// ISR callbacks (called internally)
