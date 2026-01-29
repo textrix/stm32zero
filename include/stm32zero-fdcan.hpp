@@ -1,5 +1,5 @@
-#ifndef __STM32ZERO_FDCAN_HPP__
-#define __STM32ZERO_FDCAN_HPP__
+#ifndef STM32ZERO_FDCAN_HPP_
+#define STM32ZERO_FDCAN_HPP_
 
 /**
  * STM32ZERO FDCAN Module - CAN-FD support with static allocation
@@ -682,4 +682,4 @@ private:
 
 #endif // STM32ZERO_RTOS_FREERTOS
 
-#endif // __STM32ZERO_FDCAN_HPP__
+#endif // STM32ZERO_FDCAN_HPP_

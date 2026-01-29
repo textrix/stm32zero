@@ -1,5 +1,5 @@
-#ifndef __STM32ZERO_HPP__
-#define __STM32ZERO_HPP__
+#ifndef STM32ZERO_HPP_
+#define STM32ZERO_HPP_
 
 #include <cstdint>
 #include <cstddef>
@@ -494,4 +494,4 @@ bool wait_until(Predicate cond, uint32_t timeout_ms)
 namespace STM32ZERO_NAMESPACE_ALIAS = stm32zero;
 #endif
 
-#endif // __STM32ZERO_HPP__
+#endif // STM32ZERO_HPP_

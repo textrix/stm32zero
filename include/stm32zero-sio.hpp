@@ -1,5 +1,5 @@
-#ifndef __STM32ZERO_SIO_HPP__
-#define __STM32ZERO_SIO_HPP__
+#ifndef STM32ZERO_SIO_HPP_
+#define STM32ZERO_SIO_HPP_
 
 /**
  * STM32ZERO Serial I/O Module - Default UART for debug/console
@@ -208,4 +208,4 @@ uint16_t read_peak();
 } // namespace sio
 } // namespace stm32zero
 
-#endif // __STM32ZERO_SIO_HPP__
+#endif // STM32ZERO_SIO_HPP_

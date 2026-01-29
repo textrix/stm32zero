@@ -1,5 +1,5 @@
-#ifndef __STM32ZERO_TIM_HPP__
-#define __STM32ZERO_TIM_HPP__
+#ifndef STM32ZERO_TIM_HPP_
+#define STM32ZERO_TIM_HPP_
 
 /**
  * STM32ZERO Timer Metadata Template
@@ -103,4 +103,4 @@ STM32ZERO_DEFINE_TIM(17);
 
 } // namespace stm32zero
 
-#endif // __STM32ZERO_TIM_HPP__
+#endif // STM32ZERO_TIM_HPP_

@@ -1,5 +1,5 @@
-#ifndef __STM32ZERO_FREERTOS_HPP__
-#define __STM32ZERO_FREERTOS_HPP__
+#ifndef STM32ZERO_FREERTOS_HPP_
+#define STM32ZERO_FREERTOS_HPP_
 
 /**
  * STM32ZERO FreeRTOS Utilities
@@ -740,4 +740,4 @@ private:
 } // namespace freertos
 } // namespace stm32zero
 
-#endif // __STM32ZERO_FREERTOS_HPP__
+#endif // STM32ZERO_FREERTOS_HPP_
