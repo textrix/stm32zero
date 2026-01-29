@@ -173,13 +173,27 @@ STM32ZERO_DEFINE_FDCAN(can1, hfdcan1, 16);
 // MX_FDCAN1_Init() 이후
 STM32ZERO_INIT_FDCAN(can1, hfdcan1);
 
-can1.open(0x100, fdcan::FrameFormat::FD_BRS, fdcan::IdType::STANDARD,
-          fdcan::Bitrate::K500, fdcan::Bitrate::M2);
+can1.set_format(fdcan::FrameFormat::FD_BRS);
+can1.set_nominal(fdcan::Bitrate::K500);
+can1.set_data(fdcan::Bitrate::M2);
+can1.set_filter_range(0x100, 0x1FF);
+can1.open();
 
-// 송수신
-can1.send(0x180, data, 8, 1000);
+can1.write(0x100, data, 8, 1000);           // Standard ID
+can1.write_ext(0x18DAF110, data, 8, 1000);  // Extended ID
+
 fdcan::RxMessage msg;
-can1.recv(&msg, 1000);
+can1.read(&msg, 1000);
+
+// TX/RX 상태 확인
+if (can1.writable()) { ... }   // TX FIFO에 빈 슬롯 있음
+if (can1.readable()) { ... }   // RX 메시지 있음
+
+// 대기 함수
+can1.wait_writable(1000);      // TX 가능할 때까지 대기
+can1.wait_readable(1000);      // RX 메시지 올 때까지 대기
+can1.flush(1000);              // 모든 TX 완료 대기
+can1.purge();                  // RX 버퍼 비우기
 ```
 
 **하드웨어 주의사항:**

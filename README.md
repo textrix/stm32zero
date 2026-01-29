@@ -173,13 +173,27 @@ STM32ZERO_DEFINE_FDCAN(can1, hfdcan1, 16);
 // After MX_FDCAN1_Init()
 STM32ZERO_INIT_FDCAN(can1, hfdcan1);
 
-can1.open(0x100, fdcan::FrameFormat::FD_BRS, fdcan::IdType::STANDARD,
-          fdcan::Bitrate::K500, fdcan::Bitrate::M2);
+can1.set_format(fdcan::FrameFormat::FD_BRS);
+can1.set_nominal(fdcan::Bitrate::K500);
+can1.set_data(fdcan::Bitrate::M2);
+can1.set_filter_range(0x100, 0x1FF);
+can1.open();
 
-// Send/Receive
-can1.send(0x180, data, 8, 1000);
+can1.write(0x100, data, 8, 1000);           // Standard ID
+can1.write_ext(0x18DAF110, data, 8, 1000);  // Extended ID
+
 fdcan::RxMessage msg;
-can1.recv(&msg, 1000);
+can1.read(&msg, 1000);
+
+// TX/RX status check
+if (can1.writable()) { ... }   // TX FIFO has free slot
+if (can1.readable()) { ... }   // RX message available
+
+// Wait functions
+can1.wait_writable(1000);      // Wait until TX possible
+can1.wait_readable(1000);      // Wait until RX available
+can1.flush(1000);              // Wait for all TX to complete
+can1.purge();                  // Clear RX buffer
 ```
 
 **Hardware Note:**

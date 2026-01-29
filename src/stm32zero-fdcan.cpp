@@ -93,8 +93,10 @@ static void register_fdcan(FDCAN_HandleTypeDef* hfdcan, Fdcan* fdcan)
 }
 
 //=============================================================================
-// HAL Callback Stubs (static functions)
+// HAL Callback Stubs (for USE_HAL_FDCAN_REGISTER_CALLBACKS=1)
 //=============================================================================
+
+#if USE_HAL_FDCAN_REGISTER_CALLBACKS == 1
 
 static void rx_fifo0_callback_static(FDCAN_HandleTypeDef* hfdcan, uint32_t rx_fifo0_its)
 {
@@ -131,6 +133,8 @@ static void error_status_callback_static(FDCAN_HandleTypeDef* hfdcan,
 	}
 }
 
+#endif // USE_HAL_FDCAN_REGISTER_CALLBACKS
+
 //=============================================================================
 // Fdcan Implementation
 //=============================================================================
@@ -144,7 +148,7 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, QueueHandle_t rx_queue)
 	opened_ = false;
 
 	tx_mutex_.create();
-	tx_sem_.create();
+	tx_sem_.create(TX_FIFO_SIZE);
 
 	// Register in mapping table
 	register_fdcan(hfdcan, this);
@@ -163,7 +167,6 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, RxMessage* rx_buffer, size_t rx_bu
 	rx_head_ = 0;
 	rx_tail_ = 0;
 	opened_ = false;
-	tx_complete_ = true;
 
 	// Register in mapping table
 	register_fdcan(hfdcan, this);
@@ -537,7 +540,7 @@ Status Fdcan::close()
 	return Status::OK;
 }
 
-Status Fdcan::send_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms)
+Status Fdcan::write_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms)
 {
 	if (!opened_) {
 		return Status::NOT_READY;
@@ -552,16 +555,22 @@ Status Fdcan::send_internal(uint32_t id, IdType id_type, const uint8_t* data, ui
 	}
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	// Wait for free FIFO slot first
+	if (!tx_sem_.take(pdMS_TO_TICKS(timeout_ms))) {
+		return Status::TIMEOUT;
+	}
+
+	// Then lock mutex for thread-safe header/scratch access
 	freertos::MutexLock lock(tx_mutex_, pdMS_TO_TICKS(timeout_ms));
 	if (!lock) {
+		tx_sem_.give();  // Return slot on mutex timeout
 		return Status::TIMEOUT;
 	}
 #else
-	// Bare-metal: wait for previous TX to complete
-	if (!wait_until([this]{ return tx_complete_; }, timeout_ms)) {
+	// Bare-metal: wait for free FIFO slot
+	if (!wait_until([this]{ return tx_fifo_free_level() > 0; }, timeout_ms)) {
 		return Status::TIMEOUT;
 	}
-	tx_complete_ = false;
 #endif
 
 	// Convert byte length to DLC and get slot size
@@ -584,44 +593,33 @@ Status Fdcan::send_internal(uint32_t id, IdType id_type, const uint8_t* data, ui
 	// Add message to TX FIFO
 	HAL_StatusTypeDef hal_status = HAL_FDCAN_AddMessageToTxFifoQ(hfdcan_, &tx_header_, tx_data);
 	if (hal_status != HAL_OK) {
-#if !defined(STM32ZERO_RTOS_FREERTOS) || (STM32ZERO_RTOS_FREERTOS == 0)
-		tx_complete_ = true;
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+		tx_sem_.give();  // Return slot on HAL error
 #endif
 		return Status::ERROR;
 	}
 
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-	// Wait for TX complete notification
-	if (!tx_sem_.take(pdMS_TO_TICKS(timeout_ms))) {
-		return Status::TIMEOUT;
-	}
-#else
-	// Bare-metal: wait for completion
-	if (!wait_until([this]{ return tx_complete_; }, timeout_ms)) {
-		return Status::TIMEOUT;
-	}
-#endif
-
+	// Return immediately - ISR will give() semaphore when TX completes
 	return Status::OK;
 }
 
-Status Fdcan::send(uint16_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms)
+Status Fdcan::write(uint16_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms)
 {
 	if (id > 0x7FF) {
 		return Status::INVALID_PARAM;
 	}
-	return send_internal(id, IdType::STANDARD, data, len, timeout_ms);
+	return write_internal(id, IdType::STANDARD, data, len, timeout_ms);
 }
 
-Status Fdcan::send_ext(uint32_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms)
+Status Fdcan::write_ext(uint32_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms)
 {
 	if (id > 0x1FFFFFFF) {
 		return Status::INVALID_PARAM;
 	}
-	return send_internal(id, IdType::EXTENDED, data, len, timeout_ms);
+	return write_internal(id, IdType::EXTENDED, data, len, timeout_ms);
 }
 
-Status Fdcan::recv(RxMessage* msg, uint32_t timeout_ms)
+Status Fdcan::read(RxMessage* msg, uint32_t timeout_ms)
 {
 	if (!opened_) {
 		return Status::NOT_READY;
@@ -660,6 +658,106 @@ Status Fdcan::recv(RxMessage* msg, uint32_t timeout_ms)
 uint32_t Fdcan::error_code() const
 {
 	return hfdcan_ ? hfdcan_->ErrorCode : 0;
+}
+
+bool Fdcan::writable() const
+{
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	return opened_ && tx_sem_.count() > 0;
+#else
+	return opened_ && tx_fifo_free_level() > 0;
+#endif
+}
+
+Status Fdcan::wait_writable(uint32_t timeout_ms)
+{
+	if (!opened_) {
+		return Status::NOT_READY;
+	}
+
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	TickType_t start = xTaskGetTickCount();
+	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
+
+	while (tx_sem_.count() == 0) {
+		if ((xTaskGetTickCount() - start) >= timeout_ticks) {
+			return Status::TIMEOUT;
+		}
+		vTaskDelay(1);
+	}
+	return Status::OK;
+#else
+	if (!wait_until([this]{ return tx_fifo_free_level() > 0; }, timeout_ms)) {
+		return Status::TIMEOUT;
+	}
+	return Status::OK;
+#endif
+}
+
+Status Fdcan::flush(uint32_t timeout_ms)
+{
+	if (!opened_) {
+		return Status::NOT_READY;
+	}
+
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	TickType_t start = xTaskGetTickCount();
+	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
+
+	while (tx_sem_.count() < TX_FIFO_SIZE) {
+		if ((xTaskGetTickCount() - start) >= timeout_ticks) {
+			return Status::TIMEOUT;
+		}
+		vTaskDelay(1);
+	}
+	return Status::OK;
+#else
+	if (!wait_until([this]{ return tx_fifo_free_level() == TX_FIFO_SIZE; }, timeout_ms)) {
+		return Status::TIMEOUT;
+	}
+	return Status::OK;
+#endif
+}
+
+bool Fdcan::readable() const
+{
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	return opened_ && uxQueueMessagesWaiting(rx_queue_) > 0;
+#else
+	return opened_ && rx_head_ != rx_tail_;
+#endif
+}
+
+Status Fdcan::wait_readable(uint32_t timeout_ms)
+{
+	if (!opened_) {
+		return Status::NOT_READY;
+	}
+
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	// Peek the queue to check if message available
+	RxMessage msg;
+	if (xQueuePeek(rx_queue_, &msg, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
+		return Status::OK;
+	}
+	return Status::TIMEOUT;
+#else
+	if (!wait_until([this]{ return rx_head_ != rx_tail_; }, timeout_ms)) {
+		return Status::TIMEOUT;
+	}
+	return Status::OK;
+#endif
+}
+
+void Fdcan::purge()
+{
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	xQueueReset(rx_queue_);
+#else
+	CriticalSection cs;
+	rx_head_ = 0;
+	rx_tail_ = 0;
+#endif
 }
 
 //=============================================================================
@@ -803,7 +901,7 @@ void Fdcan::tx_complete_isr(uint32_t buffer_indexes)
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 	tx_sem_.give_from_isr();
 #else
-	tx_complete_ = true;
+	// Bare-metal: no action needed, write_internal polls tx_fifo_free_level()
 #endif
 }
 
