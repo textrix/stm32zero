@@ -185,8 +185,54 @@ private:
 #endif
 };
 
+//=============================================================================
+// Callback Processing API (for user-provided weak callbacks)
+//=============================================================================
+
+/**
+ * Process RX event from HAL callback
+ *
+ * Call this from your HAL_UARTEx_RxEventCallback() when using
+ * STM32ZERO_USER_UART_CALLBACKS with USE_HAL_UART_REGISTER_CALLBACKS=0.
+ *
+ * C++ code: stm32zero::uart::process_rx_event(huart, size);
+ * C code:   stm32zero_uart_process_rx_event(huart, size);
+ *
+ * @param huart HAL UART handle
+ * @param size  Number of bytes received
+ */
+void process_rx_event(UART_HandleTypeDef* huart, uint16_t size);
+
+/**
+ * Process TX complete event from HAL callback
+ *
+ * Call this from your HAL_UART_TxCpltCallback() when using
+ * STM32ZERO_USER_UART_CALLBACKS with USE_HAL_UART_REGISTER_CALLBACKS=0.
+ *
+ * C++ code: stm32zero::uart::process_tx_complete(huart);
+ * C code:   stm32zero_uart_process_tx_complete(huart);
+ *
+ * @param huart HAL UART handle
+ */
+void process_tx_complete(UART_HandleTypeDef* huart);
+
 } // namespace uart
 } // namespace stm32zero
+
+//=============================================================================
+// C API (for calling from .c files)
+//=============================================================================
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void stm32zero_uart_process_rx_event(UART_HandleTypeDef* huart, uint16_t size);
+void stm32zero_uart_process_tx_complete(UART_HandleTypeDef* huart);
+
+#ifdef __cplusplus
+}
+#endif
 
 //=============================================================================
 // STM32ZERO_DEFINE_UART Macro

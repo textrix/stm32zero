@@ -937,6 +937,30 @@ void Fdcan::error_isr()
 	}
 }
 
+//=============================================================================
+// Callback Processing API
+//=============================================================================
+
+void process_rx_fifo0(FDCAN_HandleTypeDef* hfdcan, uint32_t rx_fifo0_its)
+{
+	fdcan_rx_fifo0_handler(hfdcan, rx_fifo0_its);
+}
+
+void process_tx_complete(FDCAN_HandleTypeDef* hfdcan, uint32_t buffer_indexes)
+{
+	fdcan_tx_complete_handler(hfdcan, buffer_indexes);
+}
+
+void process_tx_fifo_empty(FDCAN_HandleTypeDef* hfdcan)
+{
+	fdcan_tx_fifo_empty_handler(hfdcan);
+}
+
+void process_error(FDCAN_HandleTypeDef* hfdcan, uint32_t error_status_its)
+{
+	fdcan_error_handler(hfdcan, error_status_its);
+}
+
 } // namespace fdcan
 } // namespace stm32zero
 
@@ -945,27 +969,53 @@ void Fdcan::error_isr()
 //=============================================================================
 
 #if USE_HAL_FDCAN_REGISTER_CALLBACKS == 0
+#if !defined(STM32ZERO_USER_FDCAN_CALLBACKS)
 
 extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
 {
-	stm32zero::fdcan::fdcan_rx_fifo0_handler(hfdcan, RxFifo0ITs);
+	stm32zero::fdcan::process_rx_fifo0(hfdcan, RxFifo0ITs);
 }
 
 extern "C" void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t BufferIndexes)
 {
-	stm32zero::fdcan::fdcan_tx_complete_handler(hfdcan, BufferIndexes);
+	stm32zero::fdcan::process_tx_complete(hfdcan, BufferIndexes);
 }
 
 extern "C" void HAL_FDCAN_TxFifoEmptyCallback(FDCAN_HandleTypeDef* hfdcan)
 {
-	stm32zero::fdcan::fdcan_tx_fifo_empty_handler(hfdcan);
+	stm32zero::fdcan::process_tx_fifo_empty(hfdcan);
 }
 
 extern "C" void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t ErrorStatusITs)
 {
-	stm32zero::fdcan::fdcan_error_handler(hfdcan, ErrorStatusITs);
+	stm32zero::fdcan::process_error(hfdcan, ErrorStatusITs);
 }
 
+#endif // !STM32ZERO_USER_FDCAN_CALLBACKS
 #endif // USE_HAL_FDCAN_REGISTER_CALLBACKS == 0
+
+//=============================================================================
+// C API Wrappers
+//=============================================================================
+
+extern "C" void stm32zero_fdcan_process_rx_fifo0(FDCAN_HandleTypeDef* hfdcan, uint32_t rx_fifo0_its)
+{
+	stm32zero::fdcan::process_rx_fifo0(hfdcan, rx_fifo0_its);
+}
+
+extern "C" void stm32zero_fdcan_process_tx_complete(FDCAN_HandleTypeDef* hfdcan, uint32_t buffer_indexes)
+{
+	stm32zero::fdcan::process_tx_complete(hfdcan, buffer_indexes);
+}
+
+extern "C" void stm32zero_fdcan_process_tx_fifo_empty(FDCAN_HandleTypeDef* hfdcan)
+{
+	stm32zero::fdcan::process_tx_fifo_empty(hfdcan);
+}
+
+extern "C" void stm32zero_fdcan_process_error(FDCAN_HandleTypeDef* hfdcan, uint32_t error_status_its)
+{
+	stm32zero::fdcan::process_error(hfdcan, error_status_its);
+}
 
 #endif // HAL_FDCAN_MODULE_ENABLED

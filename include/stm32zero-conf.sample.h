@@ -98,6 +98,91 @@
 // #define STM32ZERO_SIO_NO_STDIO  1
 
 //=============================================================================
+// UART Callback Configuration
+//=============================================================================
+
+/**
+ * User-provided weak callbacks for UART
+ *
+ * This option is only relevant when USE_HAL_UART_REGISTER_CALLBACKS=0.
+ *
+ * By default (when not defined), STM32ZERO provides weak callback implementations
+ * (HAL_UARTEx_RxEventCallback and HAL_UART_TxCpltCallback) that automatically
+ * route events to STM32ZERO UART instances.
+ *
+ * Define this macro if you need to:
+ *   - Handle additional UARTs not managed by STM32ZERO
+ *   - Add custom processing before/after STM32ZERO handling
+ *   - Integrate with other libraries that also need these callbacks
+ *
+ * When defined, you must provide your own weak callback implementations
+ * and call the STM32ZERO processing functions:
+ *
+ * Example (C++ - include stm32zero-uart.hpp):
+ *   void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size)
+ *   {
+ *       stm32zero::uart::process_rx_event(huart, Size);
+ *       if (huart == &huart4) my_custom_rx_handler(Size);
+ *   }
+ *
+ * Example (C - include stm32zero-callbacks.h):
+ *   void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size)
+ *   {
+ *       stm32zero_uart_process_rx_event(huart, Size);
+ *       if (huart == &huart4) my_custom_rx_handler(Size);
+ *   }
+ *
+ * Default: disabled (STM32ZERO provides weak callbacks)
+ */
+// #define STM32ZERO_USER_UART_CALLBACKS  1
+
+/**
+ * User-provided weak callbacks for FDCAN
+ *
+ * This option is only relevant when USE_HAL_FDCAN_REGISTER_CALLBACKS=0.
+ *
+ * By default (when not defined), STM32ZERO provides weak callback implementations
+ * (HAL_FDCAN_RxFifo0Callback, HAL_FDCAN_TxBufferCompleteCallback, etc.) that
+ * automatically route events to STM32ZERO FDCAN instances.
+ *
+ * Define this macro if you need to:
+ *   - Handle additional FDCAN peripherals not managed by STM32ZERO
+ *   - Add custom processing before/after STM32ZERO handling
+ *   - Integrate with other libraries that also need these callbacks
+ *
+ * When defined, you must provide your own weak callback implementations
+ * and call the STM32ZERO processing functions:
+ *
+ * Example (C++ - include stm32zero-fdcan.hpp):
+ *   void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
+ *   {
+ *       stm32zero::fdcan::process_rx_fifo0(hfdcan, RxFifo0ITs);
+ *       if (hfdcan == &hfdcan2) my_custom_handler();
+ *   }
+ *
+ * Example (C - include stm32zero-callbacks.h):
+ *   void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
+ *   {
+ *       stm32zero_fdcan_process_rx_fifo0(hfdcan, RxFifo0ITs);
+ *   }
+ *   void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t BufferIndexes)
+ *   {
+ *       stm32zero_fdcan_process_tx_complete(hfdcan, BufferIndexes);
+ *   }
+ *   void HAL_FDCAN_TxFifoEmptyCallback(FDCAN_HandleTypeDef* hfdcan)
+ *   {
+ *       stm32zero_fdcan_process_tx_fifo_empty(hfdcan);
+ *   }
+ *   void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t ErrorStatusITs)
+ *   {
+ *       stm32zero_fdcan_process_error(hfdcan, ErrorStatusITs);
+ *   }
+ *
+ * Default: disabled (STM32ZERO provides weak callbacks)
+ */
+// #define STM32ZERO_USER_FDCAN_CALLBACKS  1
+
+//=============================================================================
 // RTOS Selection
 //=============================================================================
 

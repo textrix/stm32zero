@@ -304,8 +304,14 @@ void Uart::init(UART_HandleTypeDef* huart, RingBuffer* rx_buf, DualBuffer* tx_bu
 	// Register for callback lookup
 	register_uart(huart, this);
 
+#if USE_HAL_UART_REGISTER_CALLBACKS == 1
+	// Per-handle callback registration
 	HAL_UART_RegisterRxEventCallback(huart_, rx_event_callback_static);
 	HAL_UART_RegisterCallback(huart_, HAL_UART_TX_COMPLETE_CB_ID, tx_complete_callback_static);
+#endif
+	// When USE_HAL_UART_REGISTER_CALLBACKS=0:
+	//   - Default: STM32ZERO provides weak callbacks (HAL_UARTEx_RxEventCallback, HAL_UART_TxCpltCallback)
+	//   - With STM32ZERO_USER_UART_CALLBACKS: User provides weak callbacks and calls process_rx_event/process_tx_complete
 
 	// Start RX DMA
 	HAL_UARTEx_ReceiveToIdle_DMA(huart_, const_cast<uint8_t*>(rx_dma_), rx_dma_size_);
@@ -527,5 +533,59 @@ uint16_t Uart::write_peak()
 	return tx_buf_->water_mark();
 }
 
+//=============================================================================
+// Callback Processing API
+//=============================================================================
+
+void process_rx_event(UART_HandleTypeDef* huart, uint16_t size)
+{
+	auto* self = find_uart(huart);
+	if (self) {
+		self->rx_event_isr(size);
+	}
+}
+
+void process_tx_complete(UART_HandleTypeDef* huart)
+{
+	auto* self = find_uart(huart);
+	if (self) {
+		self->tx_complete_isr();
+	}
+}
+
 } // namespace uart
 } // namespace stm32zero
+
+//=============================================================================
+// Weak Callback Definitions (when USE_HAL_UART_REGISTER_CALLBACKS=0)
+//=============================================================================
+
+#if USE_HAL_UART_REGISTER_CALLBACKS == 0
+#if !defined(STM32ZERO_USER_UART_CALLBACKS)
+
+extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size)
+{
+	stm32zero::uart::process_rx_event(huart, Size);
+}
+
+extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart)
+{
+	stm32zero::uart::process_tx_complete(huart);
+}
+
+#endif // !STM32ZERO_USER_UART_CALLBACKS
+#endif // USE_HAL_UART_REGISTER_CALLBACKS == 0
+
+//=============================================================================
+// C API Wrappers
+//=============================================================================
+
+extern "C" void stm32zero_uart_process_rx_event(UART_HandleTypeDef* huart, uint16_t size)
+{
+	stm32zero::uart::process_rx_event(huart, size);
+}
+
+extern "C" void stm32zero_uart_process_tx_complete(UART_HandleTypeDef* huart)
+{
+	stm32zero::uart::process_tx_complete(huart);
+}

@@ -7,15 +7,12 @@
  * Features:
  *   - CAN Classic and CAN-FD support (with/without BRS)
  *   - Static allocation for all resources
- *   - HAL_FDCAN_REGISTER_CALLBACKS=1 based callback registration
+ *   - Supports both USE_HAL_FDCAN_REGISTER_CALLBACKS=1 and =0
  *   - FreeRTOS and bare-metal support
  *   - Auto-detected FDCAN clock for bit timing calculation
  *   - DLC conversion utilities (constexpr)
  *   - Flexible filter configuration (single, dual, range, mask)
  *   - Bus state and error counter monitoring
- *
- * Requirements:
- *   - USE_HAL_FDCAN_REGISTER_CALLBACKS=1 in stm32h7xx_hal_conf.h
  *
  * Usage:
  *   // In source file (.cpp) - define fdcan instance
@@ -625,8 +622,61 @@ private:
 #endif
 };
 
+//=============================================================================
+// Callback Processing API (for user-provided weak callbacks)
+//=============================================================================
+
+/**
+ * Process RX FIFO0 event from HAL callback
+ *
+ * C++ code: stm32zero::fdcan::process_rx_fifo0(hfdcan, its);
+ * C code:   stm32zero_fdcan_process_rx_fifo0(hfdcan, its);
+ */
+void process_rx_fifo0(FDCAN_HandleTypeDef* hfdcan, uint32_t rx_fifo0_its);
+
+/**
+ * Process TX buffer complete event from HAL callback
+ *
+ * C++ code: stm32zero::fdcan::process_tx_complete(hfdcan, indexes);
+ * C code:   stm32zero_fdcan_process_tx_complete(hfdcan, indexes);
+ */
+void process_tx_complete(FDCAN_HandleTypeDef* hfdcan, uint32_t buffer_indexes);
+
+/**
+ * Process TX FIFO empty event from HAL callback
+ *
+ * C++ code: stm32zero::fdcan::process_tx_fifo_empty(hfdcan);
+ * C code:   stm32zero_fdcan_process_tx_fifo_empty(hfdcan);
+ */
+void process_tx_fifo_empty(FDCAN_HandleTypeDef* hfdcan);
+
+/**
+ * Process error status event from HAL callback
+ *
+ * C++ code: stm32zero::fdcan::process_error(hfdcan, its);
+ * C code:   stm32zero_fdcan_process_error(hfdcan, its);
+ */
+void process_error(FDCAN_HandleTypeDef* hfdcan, uint32_t error_status_its);
+
 } // namespace fdcan
 } // namespace stm32zero
+
+//=============================================================================
+// C API (for calling from .c files)
+//=============================================================================
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void stm32zero_fdcan_process_rx_fifo0(FDCAN_HandleTypeDef* hfdcan, uint32_t rx_fifo0_its);
+void stm32zero_fdcan_process_tx_complete(FDCAN_HandleTypeDef* hfdcan, uint32_t buffer_indexes);
+void stm32zero_fdcan_process_tx_fifo_empty(FDCAN_HandleTypeDef* hfdcan);
+void stm32zero_fdcan_process_error(FDCAN_HandleTypeDef* hfdcan, uint32_t error_status_its);
+
+#ifdef __cplusplus
+}
+#endif
 
 //=============================================================================
 // FDCAN Instance Macros
