@@ -14,9 +14,9 @@ namespace fdcan {
 // Timing Calculation
 //=============================================================================
 
-BitTiming calculate_timing(uint32_t bitrate_hz, uint16_t sample_point_x10)
+BitTiming Fdcan::calculate_timing(uint32_t bitrate_hz, uint16_t sample_point_x10) const
 {
-	constexpr uint32_t clock_hz = STM32ZERO_FDCAN_CLOCK_HZ;
+	const uint32_t clock_hz = clock_hz_;
 
 	// Hardware limits for STM32H7 FDCAN
 	constexpr uint16_t max_prescaler = 256;
@@ -133,6 +133,9 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, QueueHandle_t rx_queue)
 	rx_queue_ = rx_queue;
 	opened_ = false;
 
+	// Auto-detect FDCAN clock frequency at runtime
+	clock_hz_ = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN);
+
 	tx_mutex_.create();
 	tx_sem_.create(TX_FIFO_SIZE);
 
@@ -153,6 +156,9 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, RxMessage* rx_buffer, size_t rx_bu
 	rx_head_ = 0;
 	rx_tail_ = 0;
 	opened_ = false;
+
+	// Auto-detect FDCAN clock frequency at runtime
+	clock_hz_ = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN);
 
 	// Register in mapping table
 	register_fdcan(hfdcan, this);
@@ -384,7 +390,7 @@ IoResult Fdcan::apply_timing_config()
 
 	// Enable TX delay compensation for high-speed FD
 	if (format_ != FrameFormat::CLASSIC && data_changed_) {
-		uint32_t data_bitrate = STM32ZERO_FDCAN_CLOCK_HZ /
+		uint32_t data_bitrate = clock_hz_ /
 					(pending_data_.prescaler * (1 + pending_data_.seg1 + pending_data_.seg2));
 		if (data_bitrate >= 2000000) {
 			HAL_FDCAN_ConfigTxDelayCompensation(hfdcan_, 2, 0);

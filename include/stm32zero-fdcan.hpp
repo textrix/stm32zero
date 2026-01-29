@@ -9,7 +9,7 @@
  *   - Static allocation for all resources
  *   - HAL_FDCAN_REGISTER_CALLBACKS=1 based callback registration
  *   - FreeRTOS and bare-metal support
- *   - 80MHz clock timing presets (configurable)
+ *   - Auto-detected FDCAN clock for bit timing calculation
  *   - DLC conversion utilities (constexpr)
  *   - Flexible filter configuration (single, dual, range, mask)
  *   - Bus state and error counter monitoring
@@ -107,7 +107,7 @@ enum class IdType : uint8_t {
 /**
  * CAN Bitrate Presets
  *
- * Based on 80MHz FDCAN clock.
+ * FDCAN clock is auto-detected via HAL_RCCEx_GetPeriphCLKFreq().
  * For CAN FD with BRS: nominal phase is fixed at 500Kbps,
  * data phase uses the selected bitrate.
  */
@@ -247,13 +247,6 @@ struct RxMessage {
 //=============================================================================
 
 /**
- * FDCAN clock frequency (override in stm32zero-conf.h if not 80MHz)
- */
-#ifndef STM32ZERO_FDCAN_CLOCK_HZ
-#define STM32ZERO_FDCAN_CLOCK_HZ 80000000
-#endif
-
-/**
  * Bit timing parameters
  */
 struct BitTiming {
@@ -266,15 +259,6 @@ struct BitTiming {
 		return prescaler > 0 && sjw > 0 && seg1 > 0 && seg2 > 0;
 	}
 };
-
-/**
- * Calculate timing parameters for given bitrate and sample point
- *
- * @param bitrate_hz Desired bitrate in Hz
- * @param sample_point_x10 Sample point * 10 (e.g., 875 for 87.5%)
- * @return BitTiming structure (prescaler=0 if calculation fails)
- */
-BitTiming calculate_timing(uint32_t bitrate_hz, uint16_t sample_point_x10);
 
 /**
  * Filter configuration type
@@ -596,7 +580,17 @@ private:
 	IoResult configure_interrupts();
 	IoResult write_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
 
+	/**
+	 * Calculate timing parameters for given bitrate and sample point
+	 *
+	 * @param bitrate_hz Desired bitrate in Hz
+	 * @param sample_point_x10 Sample point * 10 (e.g., 875 for 87.5%)
+	 * @return BitTiming structure (prescaler=0 if calculation fails)
+	 */
+	BitTiming calculate_timing(uint32_t bitrate_hz, uint16_t sample_point_x10) const;
+
 	FDCAN_HandleTypeDef* hfdcan_ = nullptr;
+	uint32_t clock_hz_ = 0;  // Auto-detected in init()
 	FDCAN_TxHeaderTypeDef tx_header_{};
 	uint8_t tx_scratch_[64]{};	// For padding data to slot size
 
