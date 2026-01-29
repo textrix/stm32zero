@@ -69,27 +69,19 @@ BitTiming Fdcan::calculate_timing(uint32_t bitrate_hz, uint16_t sample_point_x10
 //=============================================================================
 
 static constexpr size_t MAX_FDCAN_INSTANCES = 3;
-static Fdcan* fdcan_instances_[MAX_FDCAN_INSTANCES] = {nullptr};
-static FDCAN_HandleTypeDef* fdcan_handles_[MAX_FDCAN_INSTANCES] = {nullptr};
-static size_t fdcan_count_ = 0;
+
+namespace {
+	stm32zero::detail::HandleMap<Fdcan, FDCAN_HandleTypeDef, MAX_FDCAN_INSTANCES> fdcan_map_;
+}
 
 Fdcan* find_fdcan(FDCAN_HandleTypeDef* hfdcan)
 {
-	for (size_t i = 0; i < fdcan_count_; i++) {
-		if (fdcan_handles_[i] == hfdcan) {
-			return fdcan_instances_[i];
-		}
-	}
-	return nullptr;
+	return stm32zero::detail::map_find(fdcan_map_, hfdcan);
 }
 
 static void register_fdcan(FDCAN_HandleTypeDef* hfdcan, Fdcan* fdcan)
 {
-	if (fdcan_count_ < MAX_FDCAN_INSTANCES) {
-		fdcan_handles_[fdcan_count_] = hfdcan;
-		fdcan_instances_[fdcan_count_] = fdcan;
-		fdcan_count_++;
-	}
+	stm32zero::detail::map_add(fdcan_map_, hfdcan, fdcan);
 }
 
 //=============================================================================

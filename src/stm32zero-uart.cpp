@@ -255,27 +255,19 @@ bool DualBuffer::start_dma_locked()
 
 // UART -> Uart mapping table
 static constexpr size_t MAX_UART_INSTANCES = 8;
-static Uart* uart_instances_[MAX_UART_INSTANCES] = {nullptr};
-static UART_HandleTypeDef* uart_handles_[MAX_UART_INSTANCES] = {nullptr};
-static size_t uart_count_ = 0;
+
+namespace {
+	stm32zero::detail::HandleMap<Uart, UART_HandleTypeDef, MAX_UART_INSTANCES> uart_map_;
+}
 
 static Uart* find_uart(UART_HandleTypeDef* huart)
 {
-	for (size_t i = 0; i < uart_count_; i++) {
-		if (uart_handles_[i] == huart) {
-			return uart_instances_[i];
-		}
-	}
-	return nullptr;
+	return stm32zero::detail::map_find(uart_map_, huart);
 }
 
 static void register_uart(UART_HandleTypeDef* huart, Uart* uart)
 {
-	if (uart_count_ < MAX_UART_INSTANCES) {
-		uart_handles_[uart_count_] = huart;
-		uart_instances_[uart_count_] = uart;
-		uart_count_++;
-	}
+	stm32zero::detail::map_add(uart_map_, huart, uart);
 }
 
 static void rx_event_callback_static(UART_HandleTypeDef* huart, uint16_t size)

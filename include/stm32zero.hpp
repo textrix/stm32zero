@@ -239,6 +239,59 @@ constexpr size_t compute_aligned_size() noexcept
 	}
 }
 
+/**
+ * Generic handle-to-instance mapping table
+ *
+ * Used for mapping HAL handles (UART_HandleTypeDef*, FDCAN_HandleTypeDef*, etc.)
+ * to their corresponding C++ wrapper instances.
+ *
+ * @tparam Instance C++ wrapper class (e.g., Uart, Fdcan)
+ * @tparam Handle HAL handle type (e.g., UART_HandleTypeDef, FDCAN_HandleTypeDef)
+ * @tparam N Maximum number of instances
+ */
+template<typename Instance, typename Handle, size_t N>
+struct HandleMap {
+	Instance* instances[N] = {nullptr};
+	Handle* handles[N] = {nullptr};
+	size_t count = 0;
+};
+
+/**
+ * Find instance by HAL handle
+ *
+ * @param map The handle map to search
+ * @param handle HAL handle to find
+ * @return Pointer to instance, or nullptr if not found
+ */
+template<typename Instance, typename Handle, size_t N>
+inline Instance* map_find(const HandleMap<Instance, Handle, N>& map, Handle* handle)
+{
+	for (size_t i = 0; i < map.count; i++) {
+		if (map.handles[i] == handle) {
+			return map.instances[i];
+		}
+	}
+	return nullptr;
+}
+
+/**
+ * Register instance with HAL handle
+ *
+ * @param map The handle map to add to
+ * @param handle HAL handle
+ * @param instance Instance pointer
+ * @return true if added, false if map is full
+ */
+template<typename Instance, typename Handle, size_t N>
+inline bool map_add(HandleMap<Instance, Handle, N>& map, Handle* handle, Instance* instance)
+{
+	if (map.count >= N) return false;
+	map.handles[map.count] = handle;
+	map.instances[map.count] = instance;
+	map.count++;
+	return true;
+}
+
 } // namespace detail
 
 /**
