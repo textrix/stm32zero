@@ -141,13 +141,6 @@ uint16_t read_peak()
 	return sio_uart_.read_peak();
 }
 
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-QueueSetMemberHandle_t read_syncobj()
-{
-	return sio_uart_.read_syncobj();
-}
-#endif
-
 } // namespace sio
 } // namespace stm32zero
 

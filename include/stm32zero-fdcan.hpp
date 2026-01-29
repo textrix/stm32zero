@@ -568,17 +568,6 @@ public:
 	 */
 	uint8_t rx_fifo_fill_level() const;
 
-	/**
-	 * Get RX synchronization object for QueueSet (FreeRTOS only)
-	 */
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-	QueueSetMemberHandle_t read_syncobj() const { return rx_queue_; }
-
-	/**
-	 * Get TX synchronization object for QueueSet (FreeRTOS only)
-	 */
-	QueueSetMemberHandle_t write_syncobj() const { return tx_sem_.handle(); }
-#endif
 
 	/**
 	 * Get last HAL error code

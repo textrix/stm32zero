@@ -205,13 +205,6 @@ void purge();
  */
 uint16_t read_peak();
 
-#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-/**
- * Get RX synchronization object for QueueSet
- */
-QueueSetMemberHandle_t read_syncobj();
-#endif
-
 } // namespace sio
 } // namespace stm32zero
 
