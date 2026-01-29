@@ -48,6 +48,10 @@
 namespace stm32zero {
 namespace sio {
 
+// Use common Status and IoResult from stm32zero.hpp
+using Status = stm32zero::Status;
+using IoResult = stm32zero::IoResult;
+
 /**
  * Initialize sio module
  *
@@ -67,9 +71,9 @@ void init();
  *
  * @param data Pointer to data
  * @param len Data length
- * @return Number of bytes actually written
+ * @return IoResult { OK on success, count = bytes written }
  */
-int write(const void* data, size_t len);
+IoResult write(const void* data, size_t len);
 
 /**
  * Formatted write (snprintf + write)
@@ -108,24 +112,26 @@ int writef(char* buf, size_t size, const char* fmt, ...);
 
 /**
  * Check if ready to write (TX buffer has space)
+ *
+ * @return IoResult { OK if space available, BUFFER_FULL otherwise, count = free space }
  */
-bool writable();
+IoResult writable();
 
 /**
  * Wait until ready to write
  *
  * @param timeout_ms Timeout in milliseconds
- * @return true if ready, false if timeout
+ * @return IoResult { OK if ready, TIMEOUT on timeout, count = free space }
  */
-bool wait_writable(uint32_t timeout_ms);
+IoResult wait_writable(uint32_t timeout_ms);
 
 /**
  * Wait until all pending TX data is sent
  *
  * @param timeout_ms Timeout in milliseconds
- * @return true if flushed, false if timeout
+ * @return IoResult { OK if flushed, TIMEOUT on timeout }
  */
-bool flush(uint32_t timeout_ms);
+IoResult flush(uint32_t timeout_ms);
 
 /**
  * Get TX peak usage
@@ -143,9 +149,9 @@ uint16_t write_peak();
  *
  * @param data Pointer to destination buffer
  * @param len Maximum bytes to read
- * @return Number of bytes actually read (0 if buffer empty)
+ * @return IoResult { OK if data read, BUFFER_EMPTY if empty, count = bytes read }
  */
-int read(void* data, size_t len);
+IoResult read(void* data, size_t len);
 
 /**
  * Read data from input buffer with timeout
@@ -156,9 +162,9 @@ int read(void* data, size_t len);
  * @param data Pointer to destination buffer
  * @param len Bytes to read
  * @param timeout_ms Timeout in milliseconds
- * @return Number of bytes actually read
+ * @return IoResult { OK on success, TIMEOUT on timeout, count = bytes read }
  */
-int read(void* data, size_t len, uint32_t timeout_ms);
+IoResult read(void* data, size_t len, uint32_t timeout_ms);
 
 /**
  * Read a line (until newline character)
@@ -170,22 +176,24 @@ int read(void* data, size_t len, uint32_t timeout_ms);
  * @param buf Destination buffer
  * @param len Buffer size (including null terminator)
  * @param timeout_ms Timeout in milliseconds
- * @return Number of characters read (excluding null), -1 on timeout with no data
+ * @return IoResult { OK on success, TIMEOUT on timeout, count = characters read }
  */
-int readln(char* buf, size_t len, uint32_t timeout_ms = UINT32_MAX);
+IoResult readln(char* buf, size_t len, uint32_t timeout_ms = UINT32_MAX);
 
 /**
  * Check if data available to read
+ *
+ * @return IoResult { OK if data available, BUFFER_EMPTY otherwise, count = available bytes }
  */
-bool readable();
+IoResult readable();
 
 /**
  * Wait until data available to read
  *
  * @param timeout_ms Timeout in milliseconds
- * @return true if data available, false if timeout
+ * @return IoResult { OK if data available, TIMEOUT on timeout, count = available bytes }
  */
-bool wait_readable(uint32_t timeout_ms = UINT32_MAX);
+IoResult wait_readable(uint32_t timeout_ms = UINT32_MAX);
 
 /**
  * Discard all data in RX buffer

@@ -42,6 +42,10 @@
 namespace stm32zero {
 namespace uart {
 
+// Use common Status and IoResult from stm32zero.hpp
+using Status = stm32zero::Status;
+using IoResult = stm32zero::IoResult;
+
 //=============================================================================
 // RingBuffer (for RX)
 //=============================================================================
@@ -126,19 +130,19 @@ public:
 		  volatile uint8_t* rx_dma,
 		  size_t rx_dma_size);
 
-	int write(const void* data, size_t len);
-	int read(void* data, size_t len);
-	int read(void* data, size_t len, uint32_t timeout_ms);
-	int readln(char* buf, size_t len, uint32_t timeout_ms);
+	IoResult write(const void* data, size_t len);
+	IoResult read(void* data, size_t len);
+	IoResult read(void* data, size_t len, uint32_t timeout_ms);
+	IoResult readln(char* buf, size_t len, uint32_t timeout_ms);
 
 	// TX status
-	bool writable() const;
-	bool wait_writable(uint32_t timeout_ms);
-	bool flush(uint32_t timeout_ms);
+	IoResult writable() const;
+	IoResult wait_writable(uint32_t timeout_ms);
+	IoResult flush(uint32_t timeout_ms);
 
 	// RX status
-	bool readable() const;
-	bool wait_readable(uint32_t timeout_ms);
+	IoResult readable() const;
+	IoResult wait_readable(uint32_t timeout_ms);
 	void purge();
 
 	// Diagnostics

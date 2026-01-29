@@ -125,16 +125,9 @@ enum class Bitrate : uint32_t {
 	M5	= 5000000
 };
 
-/**
- * Operation Status
- */
-enum class Status : int8_t {
-	OK		= 0,
-	ERROR		= -1,
-	TIMEOUT		= -2,
-	NOT_READY	= -3,
-	INVALID_PARAM	= -4
-};
+// Use common Status and IoResult from stm32zero.hpp
+using Status = stm32zero::Status;
+using IoResult = stm32zero::IoResult;
 
 /**
  * Sample Point (x10 for precision)
@@ -444,14 +437,16 @@ public:
 	 * Applies pending configuration and starts the FDCAN peripheral.
 	 * If no configuration was set, uses CubeMX defaults.
 	 *
-	 * @return Status::OK on success
+	 * @return IoResult { OK on success, count = 0 }
 	 */
-	Status open();
+	IoResult open();
 
 	/**
 	 * Close CAN channel
+	 *
+	 * @return IoResult { OK on success, NOT_READY if not open }
 	 */
-	Status close();
+	IoResult close();
 
 	/**
 	 * Check if channel is open
@@ -469,9 +464,9 @@ public:
 	 * @param data Pointer to data (can be nullptr if len==0)
 	 * @param len Data length in bytes (0-8 for Classic, 0-64 for FD)
 	 * @param timeout_ms Timeout in milliseconds
-	 * @return Status::OK on success
+	 * @return IoResult { OK on success, count = bytes written }
 	 */
-	Status write(uint16_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+	IoResult write(uint16_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
 
 	/**
 	 * Write CAN message with Extended ID (29-bit)
@@ -480,32 +475,32 @@ public:
 	 * @param data Pointer to data (can be nullptr if len==0)
 	 * @param len Data length in bytes (0-8 for Classic, 0-64 for FD)
 	 * @param timeout_ms Timeout in milliseconds
-	 * @return Status::OK on success
+	 * @return IoResult { OK on success, count = bytes written }
 	 */
-	Status write_ext(uint32_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+	IoResult write_ext(uint32_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
 
 	/**
 	 * Check if ready to write (TX FIFO has free slot)
 	 *
-	 * @return true if at least one TX slot available
+	 * @return IoResult { OK if slot available, BUFFER_FULL otherwise, count = free slots }
 	 */
-	bool writable() const;
+	IoResult writable() const;
 
 	/**
 	 * Wait until ready to write
 	 *
 	 * @param timeout_ms Timeout in milliseconds
-	 * @return Status::OK if slot available, Status::TIMEOUT on timeout
+	 * @return IoResult { OK if slot available, TIMEOUT on timeout, count = free slots }
 	 */
-	Status wait_writable(uint32_t timeout_ms);
+	IoResult wait_writable(uint32_t timeout_ms);
 
 	/**
 	 * Wait until all pending writes complete (TX FIFO empty)
 	 *
 	 * @param timeout_ms Timeout in milliseconds
-	 * @return Status::OK on success, Status::TIMEOUT on timeout
+	 * @return IoResult { OK on success, TIMEOUT on timeout }
 	 */
-	Status flush(uint32_t timeout_ms);
+	IoResult flush(uint32_t timeout_ms);
 
 	//=========================================================================
 	// Read API (Receive)
@@ -516,24 +511,24 @@ public:
 	 *
 	 * @param msg Pointer to RxMessage structure
 	 * @param timeout_ms Timeout in milliseconds
-	 * @return Status::OK on success, Status::TIMEOUT if no message
+	 * @return IoResult { OK on success, TIMEOUT if no message, count = message length }
 	 */
-	Status read(RxMessage* msg, uint32_t timeout_ms);
+	IoResult read(RxMessage* msg, uint32_t timeout_ms);
 
 	/**
 	 * Check if message available to read
 	 *
-	 * @return true if at least one message in RX buffer/queue
+	 * @return IoResult { OK if message available, BUFFER_EMPTY otherwise, count = pending messages }
 	 */
-	bool readable() const;
+	IoResult readable() const;
 
 	/**
 	 * Wait until message available to read
 	 *
 	 * @param timeout_ms Timeout in milliseconds
-	 * @return Status::OK if message available, Status::TIMEOUT on timeout
+	 * @return IoResult { OK if message available, TIMEOUT on timeout, count = pending messages }
 	 */
-	Status wait_readable(uint32_t timeout_ms);
+	IoResult wait_readable(uint32_t timeout_ms);
 
 	/**
 	 * Discard all messages in RX buffer/queue
@@ -601,11 +596,11 @@ public:
 	void error_isr();
 
 private:
-	Status register_callbacks();
-	Status apply_timing_config();
-	Status apply_filter_config();
-	Status configure_interrupts();
-	Status write_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+	IoResult register_callbacks();
+	IoResult apply_timing_config();
+	IoResult apply_filter_config();
+	IoResult configure_interrupts();
+	IoResult write_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
 
 	FDCAN_HandleTypeDef* hfdcan_ = nullptr;
 	FDCAN_TxHeaderTypeDef tx_header_{};

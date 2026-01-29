@@ -341,12 +341,18 @@ void Uart::tx_complete_isr()
 	tx_buf_->tx_complete_isr();
 }
 
-int Uart::write(const void* data, size_t len)
+IoResult Uart::write(const void* data, size_t len)
 {
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 	freertos::MutexLock lock(tx_mutex_);
 #endif
-	return tx_buf_->write(data, len);
+	int written = tx_buf_->write(data, len);
+	if (written > 0) {
+		return {Status::OK, static_cast<uint16_t>(written)};
+	} else if (written == 0 && len > 0) {
+		return {Status::BUFFER_FULL, 0};
+	}
+	return {Status::OK, 0};
 }
 
 int Uart::vwritef(char* buf, size_t size, const char* fmt, va_list args)
@@ -368,47 +374,67 @@ int Uart::writef(char* buf, size_t size, const char* fmt, ...)
 	return len;
 }
 
-int Uart::read(void* data, size_t len)
+IoResult Uart::read(void* data, size_t len)
 {
-	return static_cast<int>(rx_buf_->pop(static_cast<uint8_t*>(data), len));
+	size_t count = rx_buf_->pop(static_cast<uint8_t*>(data), len);
+	if (count > 0) {
+		return {Status::OK, static_cast<uint16_t>(count)};
+	} else if (len > 0) {
+		return {Status::BUFFER_EMPTY, 0};
+	}
+	return {Status::OK, 0};
 }
 
-int Uart::read(void* data, size_t len, uint32_t timeout_ms)
+IoResult Uart::read(void* data, size_t len, uint32_t timeout_ms)
 {
 	if (data == nullptr || len == 0) {
-		return -1;
+		return {Status::INVALID_PARAM, 0};
 	}
 
 	uint8_t* ptr = static_cast<uint8_t*>(data);
 	size_t received = 0;
 
 	while (received < len) {
-		if (!wait_readable(timeout_ms)) {
+		IoResult result = wait_readable(timeout_ms);
+		if (!result) {
 			break;
 		}
-		received += read(ptr + received, len - received);
+		IoResult r = read(ptr + received, len - received);
+		received += r.count;
 	}
 
-	return static_cast<int>(received);
+	if (received > 0) {
+		return {Status::OK, static_cast<uint16_t>(received)};
+	}
+	return {Status::TIMEOUT, 0};
 }
 
-bool Uart::wait_readable(uint32_t timeout_ms)
+IoResult Uart::wait_readable(uint32_t timeout_ms)
 {
-	if (!rx_buf_->is_empty()) {
-		return true;
+	size_t available = rx_buf_->available();
+	if (available > 0) {
+		return {Status::OK, static_cast<uint16_t>(available)};
 	}
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-	return rx_sem_.take(pdMS_TO_TICKS(timeout_ms));
+	if (rx_sem_.take(pdMS_TO_TICKS(timeout_ms))) {
+		available = rx_buf_->available();
+		return {Status::OK, static_cast<uint16_t>(available)};
+	}
+	return {Status::TIMEOUT, 0};
 #else
-	return wait_until([this]{ return !rx_buf_->is_empty(); }, timeout_ms);
+	if (wait_until([this]{ return !rx_buf_->is_empty(); }, timeout_ms)) {
+		available = rx_buf_->available();
+		return {Status::OK, static_cast<uint16_t>(available)};
+	}
+	return {Status::TIMEOUT, 0};
 #endif
 }
 
-int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
+IoResult Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 {
 	if (buf == nullptr || len == 0) {
-		return -1;
+		return {Status::INVALID_PARAM, 0};
 	}
 
 	size_t pos = 0;
@@ -416,10 +442,11 @@ int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 	bool got_data = false;
 
 	while (pos < max_chars) {
-		if (!wait_readable(timeout_ms)) {
+		IoResult result = wait_readable(timeout_ms);
+		if (!result) {
 			if (!got_data) {
 				buf[0] = '\0';
-				return -1;
+				return {Status::TIMEOUT, 0};
 			}
 			break;
 		}
@@ -446,18 +473,21 @@ int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 	}
 
 	buf[pos] = '\0';
-	return static_cast<int>(pos);
+	return {Status::OK, static_cast<uint16_t>(pos)};
 }
 
-bool Uart::writable() const
+IoResult Uart::writable() const
 {
-	return tx_buf_->pending() < tx_buf_->size();
+	uint16_t pending = tx_buf_->pending();
+	uint16_t size = tx_buf_->size();
+	uint16_t free_space = (pending < size) ? (size - pending) : 0;
+	return {free_space > 0 ? Status::OK : Status::BUFFER_FULL, free_space};
 }
 
-bool Uart::wait_writable(uint32_t timeout_ms)
+IoResult Uart::wait_writable(uint32_t timeout_ms)
 {
 	if (!tx_buf_->is_busy()) {
-		return true;
+		return writable();
 	}
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
@@ -465,25 +495,29 @@ bool Uart::wait_writable(uint32_t timeout_ms)
 	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
 	while (tx_buf_->is_busy()) {
 		if ((xTaskGetTickCount() - start) >= timeout_ticks) {
-			return false;
+			return {Status::TIMEOUT, 0};
 		}
 		vTaskDelay(1);
 	}
-	return true;
+	return writable();
 #else
-	return wait_until([this]{ return !tx_buf_->is_busy(); }, timeout_ms);
+	if (wait_until([this]{ return !tx_buf_->is_busy(); }, timeout_ms)) {
+		return writable();
+	}
+	return {Status::TIMEOUT, 0};
 #endif
 }
 
-bool Uart::flush(uint32_t timeout_ms)
+IoResult Uart::flush(uint32_t timeout_ms)
 {
 	tx_buf_->flush();
 	return wait_writable(timeout_ms);
 }
 
-bool Uart::readable() const
+IoResult Uart::readable() const
 {
-	return !rx_buf_->is_empty();
+	size_t available = rx_buf_->available();
+	return {available > 0 ? Status::OK : Status::BUFFER_EMPTY, static_cast<uint16_t>(available)};
 }
 
 void Uart::purge()

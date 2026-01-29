@@ -353,6 +353,68 @@ private:
 };
 
 //=============================================================================
+// Common Return Types
+//=============================================================================
+
+/**
+ * Operation status codes
+ *
+ * Used by IoResult for consistent error reporting across all modules.
+ */
+enum class Status : int8_t {
+	OK		= 0,	// Success
+	ERROR		= -1,	// Generic error
+	TIMEOUT		= -2,	// Operation timed out
+	NOT_READY	= -3,	// Device not ready (not opened, etc.)
+	INVALID_PARAM	= -4,	// Invalid parameter
+	BUFFER_FULL	= -5,	// Buffer/FIFO is full
+	BUFFER_EMPTY	= -6	// Buffer/FIFO is empty
+};
+
+/**
+ * I/O operation result
+ *
+ * Returned by most I/O functions (write, read, readable, writable, etc.).
+ * Contains both status and count information.
+ *
+ * Usage:
+ *     // Simple condition check (using operator bool)
+ *     if (sio::writable()) {
+ *         // ready to write
+ *     }
+ *
+ *     // Use count for additional info
+ *     auto r = sio::readable();
+ *     if (r) {
+ *         printf("%u bytes available\n", r.count);
+ *     }
+ *
+ *     // I/O operation
+ *     auto result = sio::write(data, len);
+ *     if (result) {
+ *         printf("wrote %u bytes\n", result.count);
+ *     } else if (result.status == Status::BUFFER_FULL) {
+ *         // handle full buffer
+ *     }
+ */
+struct IoResult {
+	Status status;
+	uint16_t count;
+
+	/**
+	 * Check if operation succeeded (status == OK)
+	 */
+	constexpr bool is_ok() const noexcept { return status == Status::OK; }
+
+	/**
+	 * Boolean conversion for convenience
+	 *
+	 * Allows: if (sio::write(...)) { ... }
+	 */
+	constexpr explicit operator bool() const noexcept { return is_ok(); }
+};
+
+//=============================================================================
 // Blocking Wait (non-RTOS only)
 //=============================================================================
 

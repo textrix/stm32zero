@@ -63,7 +63,7 @@ void init()
 // Write (TX)
 //-----------------------------------------------------------------------------
 
-int write(const void* data, size_t len)
+IoResult write(const void* data, size_t len)
 {
 	return sio_uart_.write(data, len);
 }
@@ -82,17 +82,17 @@ int writef(char* buf, size_t size, const char* fmt, ...)
 	return len;
 }
 
-bool writable()
+IoResult writable()
 {
 	return sio_uart_.writable();
 }
 
-bool wait_writable(uint32_t timeout_ms)
+IoResult wait_writable(uint32_t timeout_ms)
 {
 	return sio_uart_.wait_writable(timeout_ms);
 }
 
-bool flush(uint32_t timeout_ms)
+IoResult flush(uint32_t timeout_ms)
 {
 	return sio_uart_.flush(timeout_ms);
 }
@@ -106,27 +106,27 @@ uint16_t write_peak()
 // Read (RX)
 //-----------------------------------------------------------------------------
 
-int read(void* data, size_t len)
+IoResult read(void* data, size_t len)
 {
 	return sio_uart_.read(data, len);
 }
 
-int read(void* data, size_t len, uint32_t timeout_ms)
+IoResult read(void* data, size_t len, uint32_t timeout_ms)
 {
 	return sio_uart_.read(data, len, timeout_ms);
 }
 
-int readln(char* buf, size_t len, uint32_t timeout_ms)
+IoResult readln(char* buf, size_t len, uint32_t timeout_ms)
 {
 	return sio_uart_.readln(buf, len, timeout_ms);
 }
 
-bool readable()
+IoResult readable()
 {
 	return sio_uart_.readable();
 }
 
-bool wait_readable(uint32_t timeout_ms)
+IoResult wait_readable(uint32_t timeout_ms)
 {
 	return sio_uart_.wait_readable(timeout_ms);
 }
@@ -160,8 +160,8 @@ SemaphoreHandle_t semaphore()
 extern "C" int _write(int file, char* ptr, int len)
 {
 	(void)file;
-	stm32zero::sio::write(ptr, static_cast<size_t>(len));
-	return len;
+	stm32zero::sio::IoResult result = stm32zero::sio::write(ptr, static_cast<size_t>(len));
+	return result.count;
 }
 
 extern "C" int _read(int file, char* ptr, int len)
@@ -174,9 +174,10 @@ extern "C" int _read(int file, char* ptr, int len)
 		stm32zero::sio::wait_readable(portMAX_DELAY);
 	}
 #else
-	stm32zero::wait_until([]{ return stm32zero::sio::readable(); }, UINT32_MAX);
+	stm32zero::wait_until([]{ return stm32zero::sio::readable().is_ok(); }, UINT32_MAX);
 #endif
-	return stm32zero::sio::read(ptr, static_cast<size_t>(len));
+	stm32zero::sio::IoResult result = stm32zero::sio::read(ptr, static_cast<size_t>(len));
+	return result.count;
 }
 
 #endif // !STM32ZERO_SIO_NO_STDIO
