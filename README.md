@@ -196,6 +196,10 @@ can1.flush(1000);              // Wait for all TX to complete
 can1.purge();                  // Clear RX buffer
 ```
 
+**H7/H5 Portability:**
+
+By default, Message RAM configuration uses STM32CubeMX settings as-is (works for both H7 and H5 series). To override MX settings programmatically, define `FDCAN_OVERRIDE_MX_CONFIG=1`.
+
 **Hardware Note:**
 
 CAN transceiver's STBY (standby) pin must be set **LOW** for the transceiver to be active. If STBY pin is floating or HIGH, the transceiver enters standby mode and CAN communication will fail with protocol errors (PEA/ARA in IR register).

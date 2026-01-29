@@ -312,6 +312,9 @@ IoResult Fdcan::apply_timing_config()
 	hfdcan_->Init.TransmitPause = DISABLE;
 	hfdcan_->Init.ProtocolException = DISABLE;
 
+	// Message RAM configuration - use MX settings as-is
+	// (H5 series doesn't have these fields, H7 has them but MX handles it)
+#if FDCAN_OVERRIDE_MX_CONFIG
 	// Message RAM offset
 #if defined(FDCAN2)
 	hfdcan_->Init.MessageRAMOffset = (hfdcan_->Instance == FDCAN1) ? 0 : 1280;
@@ -333,6 +336,7 @@ IoResult Fdcan::apply_timing_config()
 	hfdcan_->Init.TxFifoQueueElmtsNbr = 2;
 	hfdcan_->Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 	hfdcan_->Init.TxElmtSize = FDCAN_DATA_BYTES_8;
+#endif
 
 	// Nominal timing
 	if (nominal_changed_) {
@@ -356,13 +360,15 @@ IoResult Fdcan::apply_timing_config()
 		hfdcan_->Init.DataTimeSeg2 = pending_nominal_.seg2;
 	}
 
-	// Update element sizes for FD
+	// Update element sizes for FD - use MX settings as-is
+#if FDCAN_OVERRIDE_MX_CONFIG
 	if (format_ != FrameFormat::CLASSIC) {
 		hfdcan_->Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_64;
 		hfdcan_->Init.RxFifo1ElmtSize = FDCAN_DATA_BYTES_64;
 		hfdcan_->Init.RxBufferSize = FDCAN_DATA_BYTES_64;
 		hfdcan_->Init.TxElmtSize = FDCAN_DATA_BYTES_64;
 	}
+#endif
 
 	// Re-initialize FDCAN with new settings
 	HAL_FDCAN_DeInit(hfdcan_);
@@ -456,8 +462,10 @@ IoResult Fdcan::apply_filter_config()
 
 IoResult Fdcan::configure_interrupts()
 {
-	// Configure FIFO watermark (same as stm32util-can.c)
+	// Configure FIFO watermark (H5 doesn't have this API)
+#if defined(FDCAN_CFG_RX_FIFO0)
 	HAL_FDCAN_ConfigFifoWatermark(hfdcan_, FDCAN_CFG_RX_FIFO0, 2);
+#endif
 
 	uint32_t active_its =
 		FDCAN_IT_RX_FIFO0_NEW_MESSAGE |

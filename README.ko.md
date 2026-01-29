@@ -196,6 +196,10 @@ can1.flush(1000);              // 모든 TX 완료 대기
 can1.purge();                  // RX 버퍼 비우기
 ```
 
+**H7/H5 호환성:**
+
+기본적으로 Message RAM 설정은 STM32CubeMX 설정을 그대로 사용합니다 (H7과 H5 시리즈 모두 호환). MX 설정을 코드에서 재정의하려면 `FDCAN_OVERRIDE_MX_CONFIG=1`을 정의하세요.
+
 **하드웨어 주의사항:**
 
 CAN 트랜시버의 STBY(standby) 핀은 반드시 **LOW**로 설정해야 트랜시버가 활성화됩니다. STBY 핀이 플로팅 상태이거나 HIGH이면 트랜시버가 대기 모드로 진입하여 CAN 통신이 실패합니다 (IR 레지스터에 PEA/ARA 프로토콜 에러 발생).

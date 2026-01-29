@@ -221,6 +221,26 @@ constexpr T cache_align(T value) noexcept
 // DMA Buffer
 //=============================================================================
 
+namespace detail {
+
+/**
+ * Compute cache-aligned size at compile time
+ *
+ * Uses if constexpr to avoid instantiating align_up<0> when cache is disabled.
+ * (Ternary operator evaluates both branches, causing static_assert failure)
+ */
+template<size_t CacheLineSize, size_t Size>
+constexpr size_t compute_aligned_size() noexcept
+{
+	if constexpr (CacheLineSize == 0) {
+		return Size;
+	} else {
+		return align_up<CacheLineSize>(Size);
+	}
+}
+
+} // namespace detail
+
 /**
  * Cache-aligned DMA buffer with size validation
  *
@@ -249,7 +269,7 @@ class DmaBuffer {
 	static_assert(Size > 0, "Size must be greater than 0");
 
 	static constexpr size_t aligned_size_ =
-		(cache_line_size > 0) ? align_up<cache_line_size>(Size) : Size;
+		detail::compute_aligned_size<cache_line_size, Size>();
 
 	union {
 		volatile uint8_t data_[Size];
