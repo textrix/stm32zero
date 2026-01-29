@@ -670,6 +670,14 @@ public:
 		xSemaphoreGive(handle_);
 	}
 
+	bool give_from_isr()
+	{
+		BaseType_t woken = pdFALSE;
+		BaseType_t result = xSemaphoreGiveFromISR(handle_, &woken);
+		portYIELD_FROM_ISR(woken);
+		return result == pdTRUE;
+	}
+
 	UBaseType_t count() const
 	{
 		return uxSemaphoreGetCount(handle_);

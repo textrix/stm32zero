@@ -95,6 +95,13 @@ bool RingBuffer::is_empty() const
 	return is_empty_locked();
 }
 
+void RingBuffer::purge()
+{
+	CriticalSection cs;
+	head_ = 0;
+	tail_ = 0;
+}
+
 bool RingBuffer::is_empty_locked() const
 {
 	return head_ == tail_;
@@ -376,7 +383,7 @@ int Uart::read(void* data, size_t len, uint32_t timeout_ms)
 	size_t received = 0;
 
 	while (received < len) {
-		if (!wait(timeout_ms)) {
+		if (!wait_readable(timeout_ms)) {
 			break;
 		}
 		received += read(ptr + received, len - received);
@@ -385,7 +392,7 @@ int Uart::read(void* data, size_t len, uint32_t timeout_ms)
 	return static_cast<int>(received);
 }
 
-bool Uart::wait(uint32_t timeout_ms)
+bool Uart::wait_readable(uint32_t timeout_ms)
 {
 	if (!rx_buf_->is_empty()) {
 		return true;
@@ -409,7 +416,7 @@ int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 	bool got_data = false;
 
 	while (pos < max_chars) {
-		if (!wait(timeout_ms)) {
+		if (!wait_readable(timeout_ms)) {
 			if (!got_data) {
 				buf[0] = '\0';
 				return -1;
@@ -442,37 +449,54 @@ int Uart::readln(char* buf, size_t len, uint32_t timeout_ms)
 	return static_cast<int>(pos);
 }
 
-bool Uart::flush()
+bool Uart::writable() const
 {
-	return tx_buf_->flush();
+	return tx_buf_->pending() < tx_buf_->size();
 }
 
-size_t Uart::available()
+bool Uart::wait_writable(uint32_t timeout_ms)
 {
-	return rx_buf_->available();
+	if (!tx_buf_->is_busy()) {
+		return true;
+	}
+
+#if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
+	TickType_t start = xTaskGetTickCount();
+	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
+	while (tx_buf_->is_busy()) {
+		if ((xTaskGetTickCount() - start) >= timeout_ticks) {
+			return false;
+		}
+		vTaskDelay(1);
+	}
+	return true;
+#else
+	return wait_until([this]{ return !tx_buf_->is_busy(); }, timeout_ms);
+#endif
 }
 
-bool Uart::is_empty()
+bool Uart::flush(uint32_t timeout_ms)
 {
-	return rx_buf_->is_empty();
+	tx_buf_->flush();
+	return wait_writable(timeout_ms);
 }
 
-bool Uart::is_tx_busy()
+bool Uart::readable() const
 {
-	return tx_buf_->is_busy();
+	return !rx_buf_->is_empty();
 }
 
-uint16_t Uart::pending()
+void Uart::purge()
 {
-	return tx_buf_->pending();
+	rx_buf_->purge();
 }
 
-uint16_t Uart::rx_water_mark()
+uint16_t Uart::read_peak()
 {
 	return rx_buf_->water_mark();
 }
 
-uint16_t Uart::tx_water_mark()
+uint16_t Uart::write_peak()
 {
 	return tx_buf_->water_mark();
 }

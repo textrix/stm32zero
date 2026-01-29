@@ -68,14 +68,14 @@ int n = sio::readln(buf, sizeof(buf), 1000);
 **로깅 사용시 주의:**
 
 - **논블로킹 쓰기**: TX 버퍼가 가득 차면 데이터가 **잘림** (대기하지 않음)
-- `tx_water_mark()`로 버퍼 사용량을 모니터링하여 오버플로우 감지
+- `write_peak()`로 버퍼 사용량을 모니터링하여 오버플로우 감지
 - 잘림이 자주 발생하면 `STM32ZERO_SIO_TX_SIZE` 증가 필요
 
 ```cpp
 // Check buffer usage after heavy logging
-uint16_t wm = sio::tx_water_mark();
+uint16_t peak = sio::write_peak();
 uint16_t size = 4096;  // STM32ZERO_SIO_TX_SIZE
-if (wm > size * 80 / 100) {
+if (peak > size * 80 / 100) {
     // Warning: buffer usage exceeded 80%
 }
 ```

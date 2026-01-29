@@ -82,24 +82,24 @@ int writef(char* buf, size_t size, const char* fmt, ...)
 	return len;
 }
 
-bool flush()
+bool writable()
 {
-	return sio_uart_.flush();
+	return sio_uart_.writable();
 }
 
-bool is_tx_busy()
+bool wait_writable(uint32_t timeout_ms)
 {
-	return sio_uart_.is_tx_busy();
+	return sio_uart_.wait_writable(timeout_ms);
 }
 
-uint16_t tx_pending()
+bool flush(uint32_t timeout_ms)
 {
-	return sio_uart_.pending();
+	return sio_uart_.flush(timeout_ms);
 }
 
-uint16_t tx_water_mark()
+uint16_t write_peak()
 {
-	return sio_uart_.tx_water_mark();
+	return sio_uart_.write_peak();
 }
 
 //-----------------------------------------------------------------------------
@@ -121,24 +121,24 @@ int readln(char* buf, size_t len, uint32_t timeout_ms)
 	return sio_uart_.readln(buf, len, timeout_ms);
 }
 
-bool wait(uint32_t timeout_ms)
+bool readable()
 {
-	return sio_uart_.wait(timeout_ms);
+	return sio_uart_.readable();
 }
 
-size_t available()
+bool wait_readable(uint32_t timeout_ms)
 {
-	return sio_uart_.available();
+	return sio_uart_.wait_readable(timeout_ms);
 }
 
-bool is_empty()
+void purge()
 {
-	return sio_uart_.is_empty();
+	sio_uart_.purge();
 }
 
-uint16_t rx_water_mark()
+uint16_t read_peak()
 {
-	return sio_uart_.rx_water_mark();
+	return sio_uart_.read_peak();
 }
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
@@ -170,11 +170,11 @@ extern "C" int _read(int file, char* ptr, int len)
 
 	// Block until at least 1 byte is available
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
-	while (stm32zero::sio::is_empty()) {
-		stm32zero::sio::wait(portMAX_DELAY);
+	while (!stm32zero::sio::readable()) {
+		stm32zero::sio::wait_readable(portMAX_DELAY);
 	}
 #else
-	stm32zero::wait_until([]{ return !stm32zero::sio::is_empty(); }, UINT32_MAX);
+	stm32zero::wait_until([]{ return stm32zero::sio::readable(); }, UINT32_MAX);
 #endif
 	return stm32zero::sio::read(ptr, static_cast<size_t>(len));
 }

@@ -93,47 +93,33 @@ static void register_fdcan(FDCAN_HandleTypeDef* hfdcan, Fdcan* fdcan)
 }
 
 //=============================================================================
-// HAL Callback Stubs (for USE_HAL_FDCAN_REGISTER_CALLBACKS=1)
+// Common Callback Handlers (used by both registered and weak callbacks)
 //=============================================================================
 
-#if USE_HAL_FDCAN_REGISTER_CALLBACKS == 1
-
-static void rx_fifo0_callback_static(FDCAN_HandleTypeDef* hfdcan, uint32_t rx_fifo0_its)
+static void fdcan_rx_fifo0_handler(FDCAN_HandleTypeDef* hfdcan, uint32_t its)
 {
 	auto* self = find_fdcan(hfdcan);
-	if (self) {
-		self->rx_fifo0_isr(rx_fifo0_its);
-	}
+	if (self) self->rx_fifo0_isr(its);
 }
 
-static void tx_complete_callback_static(FDCAN_HandleTypeDef* hfdcan, uint32_t buffer_indexes)
+static void fdcan_tx_complete_handler(FDCAN_HandleTypeDef* hfdcan, uint32_t indexes)
 {
 	auto* self = find_fdcan(hfdcan);
-	if (self) {
-		self->tx_complete_isr(buffer_indexes);
-	}
+	if (self) self->tx_complete_isr(indexes);
 }
 
-static void tx_fifo_empty_callback_static(FDCAN_HandleTypeDef* hfdcan)
+static void fdcan_tx_fifo_empty_handler(FDCAN_HandleTypeDef* hfdcan)
 {
 	auto* self = find_fdcan(hfdcan);
-	if (self) {
-		self->tx_complete_isr(0);
-	}
+	if (self) self->tx_complete_isr(0);
 }
 
-static void error_status_callback_static(FDCAN_HandleTypeDef* hfdcan,
-					 uint32_t error_status_its)
+static void fdcan_error_handler(FDCAN_HandleTypeDef* hfdcan, uint32_t its)
 {
-	(void)error_status_its;
-
+	(void)its;
 	auto* self = find_fdcan(hfdcan);
-	if (self) {
-		self->error_isr();
-	}
+	if (self) self->error_isr();
 }
-
-#endif // USE_HAL_FDCAN_REGISTER_CALLBACKS
 
 //=============================================================================
 // Fdcan Implementation
@@ -180,16 +166,16 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, RxMessage* rx_buffer, size_t rx_bu
 Status Fdcan::register_callbacks()
 {
 #if USE_HAL_FDCAN_REGISTER_CALLBACKS == 1
-	if (HAL_FDCAN_RegisterRxFifo0Callback(hfdcan_, rx_fifo0_callback_static) != HAL_OK) {
+	if (HAL_FDCAN_RegisterRxFifo0Callback(hfdcan_, fdcan_rx_fifo0_handler) != HAL_OK) {
 		return Status::ERROR;
 	}
-	if (HAL_FDCAN_RegisterTxBufferCompleteCallback(hfdcan_, tx_complete_callback_static) != HAL_OK) {
+	if (HAL_FDCAN_RegisterTxBufferCompleteCallback(hfdcan_, fdcan_tx_complete_handler) != HAL_OK) {
 		return Status::ERROR;
 	}
-	if (HAL_FDCAN_RegisterCallback(hfdcan_, HAL_FDCAN_TX_FIFO_EMPTY_CB_ID, tx_fifo_empty_callback_static) != HAL_OK) {
+	if (HAL_FDCAN_RegisterCallback(hfdcan_, HAL_FDCAN_TX_FIFO_EMPTY_CB_ID, fdcan_tx_fifo_empty_handler) != HAL_OK) {
 		return Status::ERROR;
 	}
-	if (HAL_FDCAN_RegisterErrorStatusCallback(hfdcan_, error_status_callback_static) != HAL_OK) {
+	if (HAL_FDCAN_RegisterErrorStatusCallback(hfdcan_, fdcan_error_handler) != HAL_OK) {
 		return Status::ERROR;
 	}
 #endif
@@ -932,35 +918,22 @@ void Fdcan::error_isr()
 
 extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
 {
-	auto* self = stm32zero::fdcan::find_fdcan(hfdcan);
-	if (self) {
-		self->rx_fifo0_isr(RxFifo0ITs);
-	}
+	stm32zero::fdcan::fdcan_rx_fifo0_handler(hfdcan, RxFifo0ITs);
 }
 
 extern "C" void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t BufferIndexes)
 {
-	auto* self = stm32zero::fdcan::find_fdcan(hfdcan);
-	if (self) {
-		self->tx_complete_isr(BufferIndexes);
-	}
+	stm32zero::fdcan::fdcan_tx_complete_handler(hfdcan, BufferIndexes);
 }
 
 extern "C" void HAL_FDCAN_TxFifoEmptyCallback(FDCAN_HandleTypeDef* hfdcan)
 {
-	auto* self = stm32zero::fdcan::find_fdcan(hfdcan);
-	if (self) {
-		self->tx_complete_isr(0);
-	}
+	stm32zero::fdcan::fdcan_tx_fifo_empty_handler(hfdcan);
 }
 
 extern "C" void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t ErrorStatusITs)
 {
-	(void)ErrorStatusITs;
-	auto* self = stm32zero::fdcan::find_fdcan(hfdcan);
-	if (self) {
-		self->error_isr();
-	}
+	stm32zero::fdcan::fdcan_error_handler(hfdcan, ErrorStatusITs);
 }
 
 #endif // USE_HAL_FDCAN_REGISTER_CALLBACKS == 0

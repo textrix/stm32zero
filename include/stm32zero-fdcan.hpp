@@ -31,12 +31,12 @@
  *   can1.set_filter_range(0x100, 0x1FF);
  *   can1.open();
  *
- *   // Send/Receive
- *   can1.send(0x100, data, 8, 1000);           // Standard ID
- *   can1.send_ext(0x18DAF110, data, 8, 1000);  // Extended ID
+ *   // Write/Read
+ *   can1.write(0x100, data, 8, 1000);           // Standard ID
+ *   can1.write_ext(0x18DAF110, data, 8, 1000);  // Extended ID
  *
  *   fdcan::RxMessage msg;
- *   can1.recv(&msg, 1000);
+ *   can1.read(&msg, 1000);
  *
  *   // Check bus state
  *   if (can1.bus_state() == fdcan::BusState::BUS_OFF) {
@@ -324,8 +324,8 @@ struct FilterConfig {
  *   can1.set_filter_range(0x100, 0x1FF);
  *   can1.open();
  *
- *   can1.send(0x100, data, 8, 1000);         // Standard ID
- *   can1.send_ext(0x18DAF110, data, 8, 1000); // Extended ID
+ *   can1.write(0x100, data, 8, 1000);         // Standard ID
+ *   can1.write_ext(0x18DAF110, data, 8, 1000); // Extended ID
  */
 class Fdcan {
 public:
@@ -459,11 +459,11 @@ public:
 	bool is_open() const { return opened_; }
 
 	//=========================================================================
-	// Transmit API
+	// Write API (Transmit)
 	//=========================================================================
 
 	/**
-	 * Send CAN message with Standard ID (11-bit)
+	 * Write CAN message with Standard ID (11-bit)
 	 *
 	 * @param id Standard message identifier (0x000-0x7FF)
 	 * @param data Pointer to data (can be nullptr if len==0)
@@ -471,10 +471,10 @@ public:
 	 * @param timeout_ms Timeout in milliseconds
 	 * @return Status::OK on success
 	 */
-	Status send(uint16_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+	Status write(uint16_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
 
 	/**
-	 * Send CAN message with Extended ID (29-bit)
+	 * Write CAN message with Extended ID (29-bit)
 	 *
 	 * @param id Extended message identifier (0x00000000-0x1FFFFFFF)
 	 * @param data Pointer to data (can be nullptr if len==0)
@@ -482,20 +482,63 @@ public:
 	 * @param timeout_ms Timeout in milliseconds
 	 * @return Status::OK on success
 	 */
-	Status send_ext(uint32_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+	Status write_ext(uint32_t id, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+
+	/**
+	 * Check if ready to write (TX FIFO has free slot)
+	 *
+	 * @return true if at least one TX slot available
+	 */
+	bool writable() const;
+
+	/**
+	 * Wait until ready to write
+	 *
+	 * @param timeout_ms Timeout in milliseconds
+	 * @return Status::OK if slot available, Status::TIMEOUT on timeout
+	 */
+	Status wait_writable(uint32_t timeout_ms);
+
+	/**
+	 * Wait until all pending writes complete (TX FIFO empty)
+	 *
+	 * @param timeout_ms Timeout in milliseconds
+	 * @return Status::OK on success, Status::TIMEOUT on timeout
+	 */
+	Status flush(uint32_t timeout_ms);
 
 	//=========================================================================
-	// Receive API
+	// Read API (Receive)
 	//=========================================================================
 
 	/**
-	 * Receive CAN message
+	 * Read CAN message
 	 *
 	 * @param msg Pointer to RxMessage structure
 	 * @param timeout_ms Timeout in milliseconds
 	 * @return Status::OK on success, Status::TIMEOUT if no message
 	 */
-	Status recv(RxMessage* msg, uint32_t timeout_ms);
+	Status read(RxMessage* msg, uint32_t timeout_ms);
+
+	/**
+	 * Check if message available to read
+	 *
+	 * @return true if at least one message in RX buffer/queue
+	 */
+	bool readable() const;
+
+	/**
+	 * Wait until message available to read
+	 *
+	 * @param timeout_ms Timeout in milliseconds
+	 * @return Status::OK if message available, Status::TIMEOUT on timeout
+	 */
+	Status wait_readable(uint32_t timeout_ms);
+
+	/**
+	 * Discard all messages in RX buffer/queue
+	 */
+	void purge();
 
 	//=========================================================================
 	// Status/Utility API
@@ -562,7 +605,7 @@ private:
 	Status apply_timing_config();
 	Status apply_filter_config();
 	Status configure_interrupts();
-	Status send_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
+	Status write_internal(uint32_t id, IdType id_type, const uint8_t* data, uint8_t len, uint32_t timeout_ms);
 
 	FDCAN_HandleTypeDef* hfdcan_ = nullptr;
 	FDCAN_TxHeaderTypeDef tx_header_{};
@@ -585,16 +628,17 @@ private:
 
 	ErrorCallback error_callback_ = nullptr;
 
+	static constexpr size_t TX_FIFO_SIZE = 2;
+
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 	QueueHandle_t rx_queue_ = nullptr;
 	freertos::StaticMutex tx_mutex_;
-	freertos::StaticBinarySemaphore tx_sem_;
+	freertos::StaticCountingSemaphore<TX_FIFO_SIZE> tx_sem_;
 #else
 	RxMessage* rx_buffer_ = nullptr;
 	size_t rx_buffer_size_ = 0;
 	volatile size_t rx_head_ = 0;
 	volatile size_t rx_tail_ = 0;
-	volatile bool tx_complete_ = true;
 #endif
 };
 

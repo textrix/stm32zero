@@ -58,6 +58,7 @@ public:
 
 	size_t available() const;
 	bool is_empty() const;
+	void purge();
 	size_t size() const { return size_; }
 	uint16_t water_mark() const { return water_mark_; }
 
@@ -128,17 +129,21 @@ public:
 	int write(const void* data, size_t len);
 	int read(void* data, size_t len);
 	int read(void* data, size_t len, uint32_t timeout_ms);
-
-	bool wait(uint32_t timeout_ms);
 	int readln(char* buf, size_t len, uint32_t timeout_ms);
 
-	bool flush();
-	size_t available();
-	bool is_empty();
-	bool is_tx_busy();
-	uint16_t pending();
-	uint16_t rx_water_mark();
-	uint16_t tx_water_mark();
+	// TX status
+	bool writable() const;
+	bool wait_writable(uint32_t timeout_ms);
+	bool flush(uint32_t timeout_ms);
+
+	// RX status
+	bool readable() const;
+	bool wait_readable(uint32_t timeout_ms);
+	void purge();
+
+	// Diagnostics
+	uint16_t read_peak();
+	uint16_t write_peak();
 
 	int vwritef(char* buf, size_t size, const char* fmt, va_list args);
 

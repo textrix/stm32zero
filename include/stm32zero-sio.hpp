@@ -107,28 +107,30 @@ inline int writef(char (&buf)[N], const char* fmt, ...)
 int writef(char* buf, size_t size, const char* fmt, ...);
 
 /**
- * Flush pending TX data
+ * Check if ready to write (TX buffer has space)
+ */
+bool writable();
+
+/**
+ * Wait until ready to write
  *
- * Starts DMA transfer if there's data and not already busy.
+ * @param timeout_ms Timeout in milliseconds
+ * @return true if ready, false if timeout
+ */
+bool wait_writable(uint32_t timeout_ms);
+
+/**
+ * Wait until all pending TX data is sent
  *
- * @return true if new transfer started
+ * @param timeout_ms Timeout in milliseconds
+ * @return true if flushed, false if timeout
  */
-bool flush();
+bool flush(uint32_t timeout_ms);
 
 /**
- * Check if TX is in progress
+ * Get TX peak usage
  */
-bool is_tx_busy();
-
-/**
- * Get pending bytes in TX buffer
- */
-uint16_t tx_pending();
-
-/**
- * Get TX high water mark
- */
-uint16_t tx_water_mark();
+uint16_t write_peak();
 
 //=============================================================================
 // Read (RX)
@@ -173,27 +175,27 @@ int read(void* data, size_t len, uint32_t timeout_ms);
 int readln(char* buf, size_t len, uint32_t timeout_ms = UINT32_MAX);
 
 /**
- * Wait until RX data is available
+ * Check if data available to read
+ */
+bool readable();
+
+/**
+ * Wait until data available to read
  *
  * @param timeout_ms Timeout in milliseconds
  * @return true if data available, false if timeout
  */
-bool wait(uint32_t timeout_ms = UINT32_MAX);
+bool wait_readable(uint32_t timeout_ms = UINT32_MAX);
 
 /**
- * Get number of bytes available to read
+ * Discard all data in RX buffer
  */
-size_t available();
+void purge();
 
 /**
- * Check if RX buffer is empty
+ * Get RX peak usage
  */
-bool is_empty();
-
-/**
- * Get RX high water mark
- */
-uint16_t rx_water_mark();
+uint16_t read_peak();
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 /**

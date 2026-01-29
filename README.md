@@ -68,14 +68,14 @@ int n = sio::readln(buf, sizeof(buf), 1000);
 **Important for logging:**
 
 - **Non-blocking write**: If TX buffer is full, data is **truncated** (not waiting)
-- Use `tx_water_mark()` to monitor buffer usage and detect overflow conditions
+- Use `write_peak()` to monitor buffer usage and detect overflow conditions
 - Increase `STM32ZERO_SIO_TX_SIZE` if truncation occurs frequently
 
 ```cpp
 // Check buffer usage after heavy logging
-uint16_t wm = sio::tx_water_mark();
+uint16_t peak = sio::write_peak();
 uint16_t size = 4096;  // STM32ZERO_SIO_TX_SIZE
-if (wm > size * 80 / 100) {
+if (peak > size * 80 / 100) {
     // Warning: buffer usage exceeded 80%
 }
 ```
