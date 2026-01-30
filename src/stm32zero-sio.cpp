@@ -3,6 +3,7 @@
  */
 
 #include "main.h"
+
 #include "stm32zero.hpp"
 #include "stm32zero-sio.hpp"
 #include "stm32zero-uart.hpp"

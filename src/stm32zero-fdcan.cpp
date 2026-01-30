@@ -3,6 +3,7 @@
  */
 
 #include "main.h"
+
 #include "stm32zero-fdcan.hpp"
 
 #if defined(HAL_FDCAN_MODULE_ENABLED)
