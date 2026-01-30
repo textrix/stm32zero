@@ -245,6 +245,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 - STM32 HAL Drivers
 - ARM Cortex-M processor
 
+### Why C++17?
+
+STM32ZERO uses C++17 features for cleaner, more maintainable code:
+
+- **`if constexpr`**: Compile-time branching without template specialization boilerplate
+- **`inline` variables**: Header-only library support without separate .cpp definitions
+
+C++14 alternatives exist but add unnecessary complexity. Modern ARM GCC toolchains (including STM32CubeCLT) fully support C++17.
+
 ## Installation
 
 Add as a git submodule:

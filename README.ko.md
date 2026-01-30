@@ -245,6 +245,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 - STM32 HAL 드라이버
 - ARM Cortex-M 프로세서
 
+### C++17 선택 이유
+
+STM32ZERO는 깔끔하고 유지보수하기 쉬운 코드를 위해 C++17 기능을 사용합니다:
+
+- **`if constexpr`**: 템플릿 특수화 없이 컴파일 타임 분기
+- **`inline` 변수**: 별도 .cpp 정의 없이 헤더 온리 라이브러리 지원
+
+C++14 대안도 있지만 불필요한 복잡도만 증가합니다. 최신 ARM GCC 툴체인(STM32CubeCLT 포함)은 C++17을 완벽히 지원합니다.
+
 ## 설치
 
 git 서브모듈로 추가:
