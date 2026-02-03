@@ -104,7 +104,17 @@ enum class IdType : uint8_t {
 /**
  * CAN Bitrate Presets
  *
- * FDCAN clock is auto-detected via HAL_RCCEx_GetPeriphCLKFreq().
+ * FDCAN clock source:
+ *   - Default: auto-detected via HAL_RCCEx_GetPeriphCLKFreq()
+ *   - Optimized: define STM32ZERO_FDCAN_CLOCK_HZ in stm32zero-conf.h
+ *     to save ~2-3KB code size (avoids linking HAL RCC functions)
+ *
+ * Example (stm32zero-conf.h):
+ *   #define STM32ZERO_FDCAN_CLOCK_HZ  80000000UL  // 80MHz from CubeMX
+ *
+ * Note: In Debug builds, the macro value is verified against the
+ * actual clock to catch CubeMX configuration changes.
+ *
  * For CAN FD with BRS: nominal phase is fixed at 500Kbps,
  * data phase uses the selected bitrate.
  */

@@ -200,6 +200,17 @@ can1.purge();                  // RX 버퍼 비우기
 
 기본적으로 Message RAM 설정은 STM32CubeMX 설정을 그대로 사용합니다 (H7과 H5 시리즈 모두 호환). MX 설정을 코드에서 재정의하려면 `FDCAN_OVERRIDE_MX_CONFIG=1`을 정의하세요.
 
+**클럭 설정 (코드 크기 최적화):**
+
+기본적으로 FDCAN 클럭은 `HAL_RCCEx_GetPeriphCLKFreq()`로 자동 감지되며, 이로 인해 ~2-3KB 코드 크기가 증가합니다. 이를 피하려면 `stm32zero-conf.h`에 클럭 주파수를 정의하세요:
+
+```c
+// CubeMX .ioc 파일의 RCC.FDCANFreq_Value 값
+#define STM32ZERO_FDCAN_CLOCK_HZ  80000000UL
+```
+
+Debug 빌드에서는 매크로 값이 실제 클럭과 일치하는지 검증하여 CubeMX 설정 변경을 감지합니다.
+
 **하드웨어 주의사항:**
 
 CAN 트랜시버의 STBY(standby) 핀은 반드시 **LOW**로 설정해야 트랜시버가 활성화됩니다. STBY 핀이 플로팅 상태이거나 HIGH이면 트랜시버가 대기 모드로 진입하여 CAN 통신이 실패합니다 (IR 레지스터에 PEA/ARA 프로토콜 에러 발생).
@@ -286,6 +297,10 @@ Include 경로: `STM32ZERO/include`
 
 // FreeRTOS 지원
 #define STM32ZERO_RTOS_FREERTOS 1
+
+// FDCAN 클럭 (CubeMX .ioc의 RCC.FDCANFreq_Value)
+// HAL_RCCEx_GetPeriphCLKFreq() 회피로 ~2-3KB 절약
+#define STM32ZERO_FDCAN_CLOCK_HZ  80000000UL
 
 // 네임스페이스 별칭 (선택사항)
 #define STM32ZERO_NAMESPACE_ALIAS zero

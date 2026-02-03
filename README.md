@@ -200,6 +200,17 @@ can1.purge();                  // Clear RX buffer
 
 By default, Message RAM configuration uses STM32CubeMX settings as-is (works for both H7 and H5 series). To override MX settings programmatically, define `FDCAN_OVERRIDE_MX_CONFIG=1`.
 
+**Clock Configuration (Code Size Optimization):**
+
+By default, FDCAN clock is auto-detected via `HAL_RCCEx_GetPeriphCLKFreq()`, which adds ~2-3KB to code size. To avoid this, define the clock frequency in `stm32zero-conf.h`:
+
+```c
+// Value from CubeMX .ioc file: RCC.FDCANFreq_Value
+#define STM32ZERO_FDCAN_CLOCK_HZ  80000000UL
+```
+
+In Debug builds, the macro value is verified against the actual clock to catch CubeMX configuration changes.
+
 **Hardware Note:**
 
 CAN transceiver's STBY (standby) pin must be set **LOW** for the transceiver to be active. If STBY pin is floating or HIGH, the transceiver enters standby mode and CAN communication will fail with protocol errors (PEA/ARA in IR register).
@@ -286,6 +297,10 @@ Create `stm32zero-conf.h` in your include path (optional):
 
 // FreeRTOS support
 #define STM32ZERO_RTOS_FREERTOS 1
+
+// FDCAN clock (from CubeMX .ioc: RCC.FDCANFreq_Value)
+// Saves ~2-3KB by avoiding HAL_RCCEx_GetPeriphCLKFreq()
+#define STM32ZERO_FDCAN_CLOCK_HZ  80000000UL
 
 // Namespace alias (optional)
 #define STM32ZERO_NAMESPACE_ALIAS zero

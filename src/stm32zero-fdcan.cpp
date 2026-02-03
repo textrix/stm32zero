@@ -6,6 +6,8 @@
 
 #include "stm32zero-fdcan.hpp"
 
+#include <cassert>
+
 #if defined(HAL_FDCAN_MODULE_ENABLED)
 
 namespace stm32zero {
@@ -126,8 +128,19 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, QueueHandle_t rx_queue)
 	rx_queue_ = rx_queue;
 	opened_ = false;
 
-	// Auto-detect FDCAN clock frequency at runtime
+	// FDCAN clock frequency
+	// If STM32ZERO_FDCAN_CLOCK_HZ is defined, use compile-time constant
+	// to avoid linking HAL_RCCEx_GetPeriphCLKFreq() (~2-3KB code size)
+#if defined(STM32ZERO_FDCAN_CLOCK_HZ)
+	clock_hz_ = STM32ZERO_FDCAN_CLOCK_HZ;
+#if !defined(NDEBUG)
+	// Debug: verify macro matches actual clock (catch CubeMX changes)
+	assert(clock_hz_ == HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN)
+	       && "FDCAN clock mismatch! Update STM32ZERO_FDCAN_CLOCK_HZ in conf.h");
+#endif
+#else
 	clock_hz_ = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN);
+#endif
 
 	tx_mutex_.create();
 	tx_sem_.create(TX_FIFO_SIZE);
@@ -150,8 +163,19 @@ void Fdcan::init(FDCAN_HandleTypeDef* hfdcan, RxMessage* rx_buffer, size_t rx_bu
 	rx_tail_ = 0;
 	opened_ = false;
 
-	// Auto-detect FDCAN clock frequency at runtime
+	// FDCAN clock frequency
+	// If STM32ZERO_FDCAN_CLOCK_HZ is defined, use compile-time constant
+	// to avoid linking HAL_RCCEx_GetPeriphCLKFreq() (~2-3KB code size)
+#if defined(STM32ZERO_FDCAN_CLOCK_HZ)
+	clock_hz_ = STM32ZERO_FDCAN_CLOCK_HZ;
+#if !defined(NDEBUG)
+	// Debug: verify macro matches actual clock (catch CubeMX changes)
+	assert(clock_hz_ == HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN)
+	       && "FDCAN clock mismatch! Update STM32ZERO_FDCAN_CLOCK_HZ in conf.h");
+#endif
+#else
 	clock_hz_ = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN);
+#endif
 
 	// Register in mapping table
 	register_fdcan(hfdcan, this);
