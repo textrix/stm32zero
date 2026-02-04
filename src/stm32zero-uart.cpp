@@ -271,6 +271,7 @@ static void register_uart(UART_HandleTypeDef* huart, Uart* uart)
 	stm32zero::detail::map_add(uart_map_, huart, uart);
 }
 
+#if USE_HAL_UART_REGISTER_CALLBACKS == 1
 static void rx_event_callback_static(UART_HandleTypeDef* huart, uint16_t size)
 {
 	auto* self = find_uart(huart);
@@ -286,6 +287,7 @@ static void tx_complete_callback_static(UART_HandleTypeDef* huart)
 		self->tx_complete_isr();
 	}
 }
+#endif
 
 void Uart::init(UART_HandleTypeDef* huart, RingBuffer* rx_buf, DualBuffer* tx_buf, volatile uint8_t* rx_dma, size_t rx_dma_size)
 {
