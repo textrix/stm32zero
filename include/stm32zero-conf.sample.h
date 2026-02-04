@@ -36,6 +36,25 @@
 // #define STM32ZERO_DMA_RX     STM32ZERO_SECTION(".sram4_rx")
 
 //=============================================================================
+// Assert Configuration
+//=============================================================================
+
+/**
+ * Disable STM32ZERO assert handler
+ *
+ * By default, STM32ZERO provides __assert and __assert_func implementations
+ * for newlib's assert.h, outputting assertion info via Serial I/O UART.
+ *
+ * Define this macro if you:
+ *   - Use another library that provides assert handlers
+ *   - Want to implement your own custom assert handler
+ *   - Want to use the default newlib assert behavior
+ *
+ * Default: disabled (STM32ZERO provides assert handlers)
+ */
+// #define STM32ZERO_NO_ASSERT  1
+
+//=============================================================================
 // Serial I/O Configuration (sio module)
 //=============================================================================
 

@@ -130,6 +130,14 @@ ptr != NULL
 - UART must be initialized before assert can output
 - Add `stm32zero-assert.c` to your build
 
+**Disabling:**
+
+To disable STM32ZERO's assert handler (e.g., when using another library's implementation):
+
+```c
+#define STM32ZERO_NO_ASSERT  1
+```
+
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
 
 48-bit lock-free microsecond counter using cascaded timers:

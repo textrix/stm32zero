@@ -130,6 +130,14 @@ ptr != NULL
 - assert 출력 전 UART가 초기화되어 있어야 함
 - 빌드에 `stm32zero-assert.c` 추가 필요
 
+**비활성화:**
+
+STM32ZERO의 assert 핸들러를 비활성화하려면 (예: 다른 라이브러리의 구현 사용 시):
+
+```c
+#define STM32ZERO_NO_ASSERT  1
+```
+
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
 
 캐스케이드 연결된 타이머를 사용한 48비트 lock-free 마이크로초 카운터:

@@ -5,6 +5,10 @@
  * Uses STM32ZERO_SIO_REG for direct UART register access (no HAL, no interrupts).
  */
 
+#include "stm32zero-conf.h"
+
+#if !defined(STM32ZERO_NO_ASSERT)
+
 #include "main.h"
 #include "stm32zero-sio-reg.h"
 
@@ -113,3 +117,5 @@ __NO_RETURN void __assert_func(const char* filename, int line,
 		assert_delay_(0x07FFFFFF);
 	}
 }
+
+#endif /* !STM32ZERO_NO_ASSERT */
