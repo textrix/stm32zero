@@ -14,7 +14,7 @@
  *   - write()/read() based I/O (no printf, no newlib)
  *
  * Configuration (stm32zero-conf.h):
- *   - STM32ZERO_SIO_UART: UART handle name (required, e.g., huart3)
+ *   - STM32ZERO_SIO_NUM: UART number (required, e.g., 3 for USART3/huart3)
  *   - STM32ZERO_SIO_RX_SIZE: RX ring buffer size (default: 256)
  *   - STM32ZERO_SIO_TX_SIZE: TX dual buffer size (default: 4096)
  *   - STM32ZERO_SIO_DMA_SIZE: RX DMA buffer size (default: 64)
@@ -40,6 +40,8 @@
 #include <cstddef>
 #include <cstdarg>
 #include <cstdio>
+
+#include "stm32zero-sio-reg.h"
 
 #if defined(STM32ZERO_RTOS_FREERTOS) && (STM32ZERO_RTOS_FREERTOS == 1)
 #include "semphr.h"

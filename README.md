@@ -98,6 +98,38 @@ gps.write("$PMTK...\r\n", 10);
 gps.readln(buf, sizeof(buf), 1000);
 ```
 
+### Assert (`stm32zero-assert.c`)
+
+Minimal assert handler for newlib's `assert.h`:
+
+- Direct UART register access (no HAL, no interrupts)
+- Outputs file, line, function, and expression via Serial I/O UART
+- Repeats message in infinite loop for debugging
+- Proper memory barriers before disabling interrupts
+
+```c
+#include <assert.h>
+
+// Triggers assert handler if condition is false
+assert(ptr != NULL);
+assert(index < ARRAY_SIZE);
+```
+
+**Output example:**
+```
+--------------- ASSERTION FAILED ---------------
+
+src/main.c
+42
+main
+ptr != NULL
+```
+
+**Requirements:**
+- `STM32ZERO_SIO_NUM` must be defined in `stm32zero-conf.h`
+- UART must be initialized before assert can output
+- Add `stm32zero-assert.c` to your build
+
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
 
 48-bit lock-free microsecond counter using cascaded timers:
@@ -280,8 +312,8 @@ Include path: `STM32ZERO/include`
 Create `stm32zero-conf.h` in your include path (optional):
 
 ```c
-// Serial I/O module UART handle
-#define STM32ZERO_SIO_UART      huart3
+// Serial I/O module UART number (e.g., 3 for USART3/huart3)
+#define STM32ZERO_SIO_NUM       3
 #define STM32ZERO_SIO_RX_SIZE   256
 #define STM32ZERO_SIO_TX_SIZE   4096
 #define STM32ZERO_SIO_DMA_SIZE  64

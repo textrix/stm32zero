@@ -98,6 +98,38 @@ gps.write("$PMTK...\r\n", 10);
 gps.readln(buf, sizeof(buf), 1000);
 ```
 
+### Assert (`stm32zero-assert.c`)
+
+newlib `assert.h`를 위한 최소 assert 핸들러:
+
+- 직접 UART 레지스터 접근 (HAL 없음, 인터럽트 없음)
+- Serial I/O UART로 파일, 라인, 함수명, 표현식 출력
+- 디버깅을 위해 무한 루프에서 메시지 반복
+- 인터럽트 비활성화 전 적절한 메모리 배리어
+
+```c
+#include <assert.h>
+
+// 조건이 false면 assert 핸들러 호출
+assert(ptr != NULL);
+assert(index < ARRAY_SIZE);
+```
+
+**출력 예시:**
+```
+--------------- ASSERTION FAILED ---------------
+
+src/main.c
+42
+main
+ptr != NULL
+```
+
+**요구사항:**
+- `stm32zero-conf.h`에 `STM32ZERO_SIO_NUM` 정의 필요
+- assert 출력 전 UART가 초기화되어 있어야 함
+- 빌드에 `stm32zero-assert.c` 추가 필요
+
 ### Microsecond Timer (`stm32zero-ustim.hpp`)
 
 캐스케이드 연결된 타이머를 사용한 48비트 lock-free 마이크로초 카운터:
@@ -280,8 +312,8 @@ Include 경로: `STM32ZERO/include`
 프로젝트 include 경로에 `stm32zero-conf.h` 생성 (선택사항):
 
 ```c
-// Serial I/O 모듈 UART 핸들
-#define STM32ZERO_SIO_UART      huart3
+// Serial I/O 모듈 UART 번호 (예: USART3/huart3의 경우 3)
+#define STM32ZERO_SIO_NUM       3
 #define STM32ZERO_SIO_RX_SIZE   256
 #define STM32ZERO_SIO_TX_SIZE   4096
 #define STM32ZERO_SIO_DMA_SIZE  64

@@ -40,17 +40,20 @@
 //=============================================================================
 
 /**
- * UART handle for standard I/O (required)
+ * UART number for standard I/O (required)
  *
- * Shared by both stdin (sin module) and stdout (sout module).
- * Uses DMA for both RX (with idle line detection) and TX (dual buffer).
+ * Specify the UART peripheral number (1-8). This automatically generates:
+ *   - STM32ZERO_SIO_HANDLE: HAL handle name (e.g., huart3)
+ *   - STM32ZERO_SIO_REG: Register base (e.g., USART3 or UART3)
+ *
+ * Example: For USART3/huart3, set STM32ZERO_SIO_NUM to 3
  *
  * STM32CubeMX Settings:
  *   - Enable UART with DMA RX and DMA TX
  *   - Enable UART global interrupt (NVIC) for IDLE detection
  *   - Enable USE_HAL_UART_REGISTER_CALLBACKS=1 in stm32h7xx_hal_conf.h
  */
-#define STM32ZERO_SIO_UART  huart3
+#define STM32ZERO_SIO_NUM  3
 
 /**
  * RX ring buffer size in bytes
